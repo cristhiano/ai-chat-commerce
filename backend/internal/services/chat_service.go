@@ -264,23 +264,170 @@ func (s *ChatService) parseResponse(message string, products *ProductListRespons
 
 	// Generate product suggestions based on message content
 	if products != nil {
-		messageLower := strings.ToLower(message)
-		for _, product := range products.Products {
-			productNameLower := strings.ToLower(product.Name)
-
-			// Simple keyword matching for suggestions
-			if strings.Contains(messageLower, productNameLower) ||
-				strings.Contains(messageLower, strings.ToLower(product.Category.Name)) {
-				suggestions = append(suggestions, ProductSuggestion{
-					Product:    &product,
-					Reason:     "Mentioned in conversation",
-					Confidence: 0.8,
-				})
-			}
-		}
+		suggestions = s.generateRelevantSuggestions(message, products.Products)
 	}
 
 	return actions, suggestions, nil
+}
+
+// generateRelevantSuggestions generates product suggestions based on message content and intent
+func (s *ChatService) generateRelevantSuggestions(message string, products []models.Product) []ProductSuggestion {
+	var suggestions []ProductSuggestion
+	messageLower := strings.ToLower(message)
+
+	// Define intent keywords to avoid suggesting products when user is not looking for them
+	negativeIntents := []string{
+		"no", "not", "don't", "don't want", "not interested", "not looking for",
+		"remove", "delete", "cancel", "stop", "quit", "exit", "bye", "goodbye",
+		"help", "how", "what", "when", "where", "why", "question", "ask",
+		"checkout", "buy", "purchase", "order", "cart", "shopping cart",
+	}
+
+	// Check if user has negative intent (not looking for products)
+	hasNegativeIntent := false
+	for _, intent := range negativeIntents {
+		if strings.Contains(messageLower, intent) {
+			hasNegativeIntent = true
+			break
+		}
+	}
+
+	// If user has negative intent, don't suggest products
+	if hasNegativeIntent {
+		return suggestions
+	}
+
+	// Define positive intent keywords that indicate user wants product suggestions
+	positiveIntents := []string{
+		"show", "find", "search", "look for", "want", "need", "buy", "get",
+		"suggest", "recommend", "what", "which", "best", "good", "cheap",
+		"expensive", "electronics", "clothing", "books", "garden", "home",
+	}
+
+	// Check if user has positive intent
+	hasPositiveIntent := false
+	for _, intent := range positiveIntents {
+		if strings.Contains(messageLower, intent) {
+			hasPositiveIntent = true
+			break
+		}
+	}
+
+	// If no positive intent detected, don't suggest products
+	if !hasPositiveIntent {
+		return suggestions
+	}
+
+	// Generate suggestions based on semantic matching
+	for _, product := range products {
+		confidence := s.calculateRelevanceScore(messageLower, product)
+
+		// Only suggest products with reasonable relevance
+		if confidence > 0.3 {
+			suggestions = append(suggestions, ProductSuggestion{
+				Product:    &product,
+				Reason:     s.generateReason(messageLower, product),
+				Confidence: confidence,
+			})
+		}
+	}
+
+	// Sort by confidence and limit to top 3 suggestions
+	if len(suggestions) > 3 {
+		// Simple sort by confidence (descending)
+		for i := 0; i < len(suggestions)-1; i++ {
+			for j := i + 1; j < len(suggestions); j++ {
+				if suggestions[i].Confidence < suggestions[j].Confidence {
+					suggestions[i], suggestions[j] = suggestions[j], suggestions[i]
+				}
+			}
+		}
+		suggestions = suggestions[:3]
+	}
+
+	return suggestions
+}
+
+// calculateRelevanceScore calculates how relevant a product is to the user's message
+func (s *ChatService) calculateRelevanceScore(message string, product models.Product) float64 {
+	score := 0.0
+
+	// Direct product name match (highest score)
+	productNameLower := strings.ToLower(product.Name)
+	if strings.Contains(message, productNameLower) {
+		score += 0.9
+	}
+
+	// Category match
+	categoryNameLower := strings.ToLower(product.Category.Name)
+	if strings.Contains(message, categoryNameLower) {
+		score += 0.7
+	}
+
+	// Keyword matching in product description
+	descriptionLower := strings.ToLower(product.Description)
+	keywords := strings.Fields(message)
+	for _, keyword := range keywords {
+		if len(keyword) > 2 && strings.Contains(descriptionLower, keyword) {
+			score += 0.1
+		}
+	}
+
+	// Price-related keywords
+	priceKeywords := map[string]float64{
+		"cheap": 0.3, "expensive": 0.3, "budget": 0.3, "affordable": 0.3,
+		"premium": 0.3, "luxury": 0.3, "deal": 0.3, "sale": 0.3,
+	}
+	for keyword, weight := range priceKeywords {
+		if strings.Contains(message, keyword) {
+			score += weight
+		}
+	}
+
+	// Specific product type keywords
+	productTypeKeywords := map[string]float64{
+		"headphone": 0.6, "headphones": 0.6, "audio": 0.5, "music": 0.4,
+		"shirt": 0.6, "t-shirt": 0.6, "clothing": 0.5, "wear": 0.4,
+		"book": 0.6, "books": 0.6, "read": 0.5, "programming": 0.5,
+		"garden": 0.6, "tools": 0.6, "outdoor": 0.5, "plant": 0.4,
+	}
+	for keyword, weight := range productTypeKeywords {
+		if strings.Contains(message, keyword) {
+			score += weight
+		}
+	}
+
+	// Cap the score at 1.0
+	if score > 1.0 {
+		score = 1.0
+	}
+
+	return score
+}
+
+// generateReason generates a human-readable reason for the suggestion
+func (s *ChatService) generateReason(message string, product models.Product) string {
+	productNameLower := strings.ToLower(product.Name)
+	categoryNameLower := strings.ToLower(product.Category.Name)
+
+	if strings.Contains(message, productNameLower) {
+		return "Directly mentioned"
+	}
+
+	if strings.Contains(message, categoryNameLower) {
+		return "Matches your category interest"
+	}
+
+	// Check for specific keywords
+	if strings.Contains(message, "cheap") || strings.Contains(message, "budget") {
+		return "Good value option"
+	}
+
+	if strings.Contains(message, "best") || strings.Contains(message, "recommend") {
+		return "Recommended product"
+	}
+
+	return "Related to your search"
 }
 
 // executeAction executes a chat action
