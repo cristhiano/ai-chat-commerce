@@ -49,7 +49,7 @@ func main() {
 
 	// Configure CORS
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:5182", "http://127.0.0.1:3000", "http://127.0.0.1:5182"}
+	config.AllowOrigins = []string{"http://localhost:3000"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Session-ID"}
 	config.AllowCredentials = true
@@ -94,6 +94,7 @@ func main() {
 			products := public.Group("products")
 			{
 				products.GET("/", productHandler.GetProducts)
+				products.HEAD("/", productHandler.GetProducts) // Support HEAD requests for CORS
 				products.GET("/:id", productHandler.GetProductByID)
 				products.GET("/sku/:sku", productHandler.GetProductBySKU)
 				products.GET("/search", productHandler.SearchProducts)
@@ -105,6 +106,7 @@ func main() {
 			categories := public.Group("categories")
 			{
 				categories.GET("/", productHandler.GetCategories)
+				categories.HEAD("/", productHandler.GetCategories) // Support HEAD requests for CORS
 				categories.GET("/:id", productHandler.GetCategoryByID)
 				categories.GET("/slug/:slug", productHandler.GetCategoryBySlug)
 			}
@@ -132,6 +134,7 @@ func main() {
 			cart := public.Group("cart")
 			{
 				cart.GET("/", cartHandler.GetCart)
+				cart.HEAD("/", cartHandler.GetCart) // Support HEAD requests for CORS
 				cart.POST("/add", cartHandler.AddToCart)
 				cart.PUT("/update", cartHandler.UpdateCartItem)
 				cart.DELETE("/remove/:product_id", cartHandler.RemoveFromCart)

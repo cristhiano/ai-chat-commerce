@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ChatMessage, ChatSession, ProductSuggestion } from '../types';
 import { WebSocketService, createWebSocketService, disconnectWebSocketService } from '../services/websocket';
+import fetchService from '../utils/fetch';
 
 export interface UseChatSessionOptions {
   sessionId?: string;
@@ -146,12 +147,11 @@ export const useChatSession = (options: UseChatSessionOptions = {}): UseChatSess
 
   const loadHistory = useCallback(async () => {
     try {
-      const response = await fetch(`/api/v1/chat/history/${sessionId}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data.messages) {
-          setMessages(data.data.messages);
-        }
+      const result = await fetchService.get(`/api/v1/chat/history/${sessionId}`);
+      if (result.data && result.data.success && result.data.data.messages) {
+        setMessages(result.data.data.messages);
+      } else if (result.error) {
+        console.error('Failed to load chat history:', result.error);
       }
     } catch (err) {
       console.error('Failed to load chat history:', err);
@@ -181,21 +181,15 @@ export const useChatSessions = () => {
 
   const createSession = useCallback(async (userId?: string): Promise<string> => {
     try {
-      const response = await fetch('/api/v1/chat/session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: userId }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          const sessionId = data.data.id;
+      const result = await fetchService.post('/api/v1/chat/session', { user_id: userId });
+      
+      if (result.data && result.data.success) {
+          const sessionId = result.data.data.id;
           setActiveSessionId(sessionId);
           return sessionId;
         }
+      } else if (result.error) {
+        console.error('Failed to create session:', result.error);
       }
     } catch (error) {
       console.error('Failed to create chat session:', error);
@@ -209,12 +203,11 @@ export const useChatSessions = () => {
 
   const getSession = useCallback(async (sessionId: string): Promise<ChatSession | null> => {
     try {
-      const response = await fetch(`/api/v1/chat/session/${sessionId}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          return data.data;
-        }
+      const result = await fetchService.get(`/api/v1/chat/session/${sessionId}`);
+      if (result.data && result.data.success) {
+        return result.data.data;
+      } else if (result.error) {
+        console.error('Failed to get chat session:', result.error);
       }
     } catch (error) {
       console.error('Failed to get chat session:', error);
@@ -225,13 +218,12 @@ export const useChatSessions = () => {
   const loadSessions = useCallback(async (userId?: string) => {
     try {
       const url = userId ? `/api/v1/chat/sessions?user_id=${userId}` : '/api/v1/chat/sessions';
-      const response = await fetch(url);
+      const result = await fetchService.get(url);
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSessions(data.data);
-        }
+      if (result.data && result.data.success) {
+        setSessions(result.data.data);
+      } else if (result.error) {
+        console.error('Failed to load chat sessions:', result.error);
       }
     } catch (error) {
       console.error('Failed to load chat sessions:', error);

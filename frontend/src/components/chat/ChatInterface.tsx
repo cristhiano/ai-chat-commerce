@@ -3,6 +3,7 @@ import type { ChatMessage, ProductSuggestion, ChatAction } from '../../types';
 import ChatInput from './ChatInput';
 import ChatMessageComponent from './ChatMessage';
 import ProductSuggestionCard from './ProductSuggestionCard';
+import fetchService from '../../utils/fetch';
 
 interface ChatInterfaceProps {
   sessionId?: string;
@@ -167,12 +168,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const loadChatHistory = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/chat/history/${currentSessionId}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data.messages) {
-          setMessages(data.data.messages);
-        }
+      const result = await fetchService.get(`/api/v1/chat/history/${currentSessionId}`);
+      if (result.data && result.data.success && result.data.data.messages) {
+        setMessages(result.data.data.messages);
+      } else if (result.error) {
+        console.error('Failed to load chat history:', result.error);
       }
     } catch (err) {
       console.error('Failed to load chat history:', err);

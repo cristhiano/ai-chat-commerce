@@ -98,7 +98,7 @@ class ApiService {
     });
 
     const queryString = params.toString();
-    const endpoint = `/api/v1/products${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/api/v1/products/${queryString ? `?${queryString}` : ''}`;
     
     return this.request<ProductListResponse>(endpoint);
   }
@@ -131,7 +131,7 @@ class ApiService {
 
   // Category API methods
   async getCategories(): Promise<ApiResponse<Category[]>> {
-    const response = await this.request<{ categories: Category[] }>('/api/v1/categories');
+    const response = await this.request<{ categories: Category[] }>('/api/v1/categories/');
     if (response.data) {
       return { data: response.data.categories };
     }
@@ -148,7 +148,7 @@ class ApiService {
 
   // Cart API methods
   async getCart(): Promise<ApiResponse<CartResponse>> {
-    return this.request<CartResponse>('/api/v1/cart');
+    return this.request<CartResponse>('/api/v1/cart/');
   }
 
   async addToCart(item: AddToCartRequest): Promise<ApiResponse<void>> {
