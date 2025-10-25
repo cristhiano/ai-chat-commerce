@@ -70,6 +70,12 @@ func main() {
 	productHandler := handlers.NewProductHandler(productService)
 	cartService := services.NewShoppingCartService(db)
 	cartHandler := handlers.NewCartHandler(cartService)
+	userService := services.NewUserService(db)
+	userHandler := handlers.NewUserHandler(userService, os.Getenv("JWT_SECRET"))
+	orderService := services.NewOrderService(db)
+	orderHandler := handlers.NewOrderHandler(orderService)
+	paymentService := services.NewPaymentService()
+	paymentHandler := handlers.NewPaymentHandler(paymentService, orderService)
 
 	// API v1 routes
 	v1 := r.Group("/api/v1")
@@ -99,9 +105,15 @@ func main() {
 			// Auth routes (public)
 			auth := public.Group("auth")
 			{
-				auth.POST("/register", registerUser)
-				auth.POST("/login", loginUser)
-				auth.POST("/refresh", refreshToken)
+				auth.POST("/register", userHandler.Register)
+				auth.POST("/login", userHandler.Login)
+				auth.POST("/refresh", userHandler.RefreshToken)
+			}
+
+			// Payment webhook (public)
+			payments := public.Group("payments")
+			{
+				payments.POST("/webhook", paymentHandler.HandleWebhook)
 			}
 		}
 
@@ -110,11 +122,13 @@ func main() {
 		protected.Use(middleware.AuthMiddleware())
 		{
 			// User routes
-			users := protected.Group("users")
+			users := protected.Group("user")
 			{
-				users.GET("/profile", getUserProfile)
-				users.PUT("/profile", updateUserProfile)
-				users.GET("/orders", getUserOrders)
+				users.GET("/profile", userHandler.GetProfile)
+				users.PUT("/profile", userHandler.UpdateProfile)
+				users.POST("/change-password", userHandler.ChangePassword)
+				users.DELETE("/account", userHandler.DeleteAccount)
+				users.POST("/verify-email", userHandler.VerifyEmail)
 			}
 
 			// Cart routes
@@ -132,9 +146,23 @@ func main() {
 			// Order routes
 			orders := protected.Group("orders")
 			{
-				orders.POST("/", createOrder)
-				orders.GET("/:id", getOrder)
-				orders.GET("/", getUserOrders)
+				orders.POST("/", orderHandler.CreateOrder)
+				orders.GET("/:id", orderHandler.GetOrder)
+				orders.GET("/number/:number", orderHandler.GetOrderByNumber)
+				orders.GET("/", orderHandler.GetUserOrders)
+				orders.GET("/:id/summary", orderHandler.GetOrderSummary)
+				orders.DELETE("/:id", orderHandler.CancelOrder)
+			}
+
+			// Payment routes
+			payments := protected.Group("payments")
+			{
+				payments.POST("/create-intent", paymentHandler.CreatePaymentIntent)
+				payments.POST("/confirm", paymentHandler.ConfirmPayment)
+				payments.GET("/:payment_intent_id/status", paymentHandler.GetPaymentStatus)
+				payments.POST("/:payment_intent_id/cancel", paymentHandler.CancelPayment)
+				payments.POST("/:payment_intent_id/refund", paymentHandler.RefundPayment)
+				payments.GET("/methods", paymentHandler.GetPaymentMethods)
 			}
 		}
 
@@ -161,8 +189,8 @@ func main() {
 			// Admin order management
 			adminOrders := admin.Group("orders")
 			{
-				adminOrders.GET("/", getAllOrders)
-				adminOrders.PUT("/:id/status", updateOrderStatus)
+				adminOrders.PUT("/:id/status", orderHandler.UpdateOrderStatus)
+				adminOrders.PUT("/:id/payment-status", orderHandler.UpdatePaymentStatus)
 			}
 		}
 	}

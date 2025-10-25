@@ -131,13 +131,13 @@ Users can browse product catalog, search and filter products, manage shopping ca
 - [x] T029 [US1] Implement CategoryService and CategoryHandler for product categorization
 - [x] T030 [US1] Create ShoppingCartService for cart management in backend/internal/services/
 - [x] T031 [US1] Implement CartHandler with cart API endpoints in backend/internal/handlers/
-- [ ] T032 [US1] Create UserService for account management in backend/internal/services/
-- [ ] T033 [US1] Implement UserHandler with authentication endpoints in backend/internal/handlers/
-- [ ] T034 [US1] Create OrderService for checkout processing in backend/internal/services/
-- [ ] T035 [US1] Implement OrderHandler with order API endpoints in backend/internal/handlers/
-- [ ] T036 [US1] Add Stripe payment integration in backend/internal/services/
-- [ ] T037 [US1] Implement inventory checking for cart operations
-- [ ] T038 [US1] Create product search and filtering logic in ProductService
+- [x] T032 [US1] Create UserService for account management in backend/internal/services/
+- [x] T033 [US1] Implement UserHandler with authentication endpoints in backend/internal/handlers/
+- [x] T034 [US1] Create OrderService for checkout processing in backend/internal/services/
+- [x] T035 [US1] Implement OrderHandler with order API endpoints in backend/internal/handlers/
+- [x] T036 [US1] Add Stripe payment integration in backend/internal/services/
+- [x] T037 [US1] Implement inventory checking for cart operations
+- [x] T038 [US1] Create product search and filtering logic in ProductService
 
 #### Frontend Development
 - [ ] T039 [P] [US1] Create React component structure in frontend/src/components/
