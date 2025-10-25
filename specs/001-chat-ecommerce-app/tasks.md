@@ -156,11 +156,11 @@ Users can browse product catalog, search and filter products, manage shopping ca
 - [x] T052 [P] [US1] Add loading states and error handling throughout UI
 
 #### Testing
-- [ ] T053 [US1] Write unit tests for ProductService in backend/tests/services/
-- [ ] T054 [US1] Create integration tests for cart operations in backend/tests/integration/
-- [ ] T055 [US1] Implement API contract tests for product endpoints
-- [ ] T056 [US1] Write React component tests with Vitest in frontend/tests/
-- [ ] T057 [US1] Create end-to-end tests for checkout flow with Playwright
+- [x] T053 [US1] Write unit tests for ProductService in backend/tests/services/
+- [x] T054 [US1] Create integration tests for cart operations in backend/tests/integration/
+- [x] T055 [US1] Implement API contract tests for product endpoints
+- [x] T056 [US1] Write React component tests with Vitest in frontend/tests/
+- [x] T057 [US1] Create end-to-end tests for checkout flow with Playwright
 
 ---
 
