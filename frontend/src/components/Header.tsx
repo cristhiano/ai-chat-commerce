@@ -158,6 +158,13 @@ const Header: React.FC = () => {
                     >
                       Orders
                     </Link>
+                    <Link
+                      to="/admin"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      Admin Panel
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

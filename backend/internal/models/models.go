@@ -95,6 +95,23 @@ type Inventory struct {
 	Reservations []InventoryReservation `gorm:"foreignKey:InventoryID" json:"reservations"`
 }
 
+// InventoryAlert represents inventory alerts
+type InventoryAlert struct {
+	ID              uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	ProductID       uuid.UUID  `gorm:"type:uuid;not null;index" json:"product_id"`
+	VariantID       *uuid.UUID `gorm:"type:uuid;index" json:"variant_id"`
+	CurrentQuantity int        `gorm:"not null" json:"current_quantity"`
+	Threshold       int        `gorm:"not null" json:"threshold"`
+	Location        string     `gorm:"size:50" json:"location"`
+	AlertType       string     `gorm:"size:20;not null" json:"alert_type"` // "low_stock", "out_of_stock", "overstock"
+	IsRead          bool       `gorm:"default:false" json:"is_read"`
+	CreatedAt       time.Time  `json:"created_at"`
+
+	// Relationships
+	Product Product         `gorm:"foreignKey:ProductID" json:"product"`
+	Variant *ProductVariant `gorm:"foreignKey:VariantID" json:"variant"`
+}
+
 // InventoryReservation represents temporary inventory reservations
 type InventoryReservation struct {
 	ID               uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
@@ -246,6 +263,10 @@ func (Category) TableName() string {
 
 func (Inventory) TableName() string {
 	return "inventory"
+}
+
+func (InventoryAlert) TableName() string {
+	return "inventory_alerts"
 }
 
 func (InventoryReservation) TableName() string {

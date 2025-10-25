@@ -20,6 +20,9 @@ import OrderDetailPage from './pages/OrderDetailPage';
 import ChatPage from './pages/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 
+// Admin components
+import AdminPage from './components/admin/AdminPage';
+
 // Context providers
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -67,6 +70,9 @@ function App() {
                         <ChatPage />
                       </Layout>
                     } />
+                    
+                    {/* Admin route */}
+                    <Route path="/admin/*" element={<AdminPage />} />
                     
                     {/* Protected routes */}
                     <Route path="/cart" element={

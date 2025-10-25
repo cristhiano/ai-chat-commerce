@@ -6,10 +6,12 @@ import (
 	"chat-ecommerce-backend/internal/services"
 	"chat-ecommerce-backend/pkg/database"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -78,6 +80,10 @@ func main() {
 	paymentHandler := handlers.NewPaymentHandler(paymentService, orderService)
 	chatService := services.NewChatService(db, productService, cartService)
 	chatHandler := handlers.NewChatHandler(chatService)
+	adminProductService := services.NewAdminProductService(db)
+	inventoryService := services.NewInventoryService(db)
+	alertService := services.NewAlertService(db)
+	adminHandler := handlers.NewAdminHandler(adminProductService, productService)
 
 	// API v1 routes
 	v1 := r.Group("/api/v1")
@@ -181,38 +187,136 @@ func main() {
 
 		// Admin routes
 		admin := v1.Group("/admin")
-		admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
+		admin.Use(middleware.AuthMiddleware())
+		admin.Use(middleware.AdminMiddleware())
 		{
-			// Admin product management
-			adminProducts := admin.Group("products")
+			// Product management
+			products := admin.Group("products")
 			{
-				adminProducts.POST("/", productHandler.CreateProduct)
-				adminProducts.PUT("/:id", productHandler.UpdateProduct)
-				adminProducts.DELETE("/:id", productHandler.DeleteProduct)
+				products.POST("/", adminHandler.CreateProduct)
+				products.GET("/", adminHandler.GetProducts)
+				products.GET("/:id", adminHandler.GetProductWithDetails)
+				products.PUT("/:id", adminHandler.UpdateProduct)
+				products.DELETE("/:id", adminHandler.DeleteProduct)
+				products.POST("/bulk-import", adminHandler.BulkImportProducts)
+				products.GET("/export", adminHandler.ExportProducts)
+				products.GET("/stats", adminHandler.GetProductStats)
 			}
 
-			// Admin inventory management
-			adminInventory := admin.Group("inventory")
+			// Category management
+			categories := admin.Group("categories")
 			{
-				adminInventory.GET("/", getInventory)
-				adminInventory.PUT("/:id", updateInventory)
-				adminInventory.POST("/adjust", adjustInventory)
+				categories.GET("/", adminHandler.GetCategories)
+				categories.POST("/", adminHandler.CreateCategory)
+				categories.PUT("/:id", adminHandler.UpdateCategory)
+				categories.DELETE("/:id", adminHandler.DeleteCategory)
 			}
 
-			// Admin order management
-			adminOrders := admin.Group("orders")
+			// Inventory management
+			inventory := admin.Group("inventory")
 			{
-				adminOrders.PUT("/:id/status", orderHandler.UpdateOrderStatus)
-				adminOrders.PUT("/:id/payment-status", orderHandler.UpdatePaymentStatus)
+				inventory.GET("/", func(c *gin.Context) {
+					productIDStr := c.Query("product_id")
+					var productID *uuid.UUID
+					if productIDStr != "" {
+						if id, err := uuid.Parse(productIDStr); err == nil {
+							productID = &id
+						}
+					}
+
+					levels, err := inventoryService.GetInventoryLevels(productID, nil)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+						return
+					}
+
+					c.JSON(http.StatusOK, gin.H{"success": true, "data": levels})
+				})
+
+				inventory.POST("/update", func(c *gin.Context) {
+					var req services.InventoryUpdateRequest
+					if err := c.ShouldBindJSON(&req); err != nil {
+						c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+						return
+					}
+
+					if err := inventoryService.UpdateInventory(req); err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+						return
+					}
+
+					c.JSON(http.StatusOK, gin.H{"success": true, "message": "Inventory updated successfully"})
+				})
+
+				inventory.GET("/report", func(c *gin.Context) {
+					report, err := inventoryService.GetInventoryReport()
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+						return
+					}
+
+					c.JSON(http.StatusOK, gin.H{"success": true, "data": report})
+				})
+			}
+
+			// Alert management
+			alerts := admin.Group("alerts")
+			{
+				alerts.GET("/", func(c *gin.Context) {
+					isReadStr := c.Query("is_read")
+					var isRead *bool
+					if isReadStr != "" {
+						if isReadStr == "true" {
+							read := true
+							isRead = &read
+						} else if isReadStr == "false" {
+							read := false
+							isRead = &read
+						}
+					}
+
+					alerts, err := inventoryService.GetInventoryAlerts(isRead)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+						return
+					}
+
+					c.JSON(http.StatusOK, gin.H{"success": true, "data": alerts})
+				})
+
+				alerts.POST("/mark-read", func(c *gin.Context) {
+					var req struct {
+						AlertIDs []uuid.UUID `json:"alert_ids" binding:"required"`
+					}
+
+					if err := c.ShouldBindJSON(&req); err != nil {
+						c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+						return
+					}
+
+					if err := alertService.MarkAlertsAsRead(req.AlertIDs); err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+						return
+					}
+
+					c.JSON(http.StatusOK, gin.H{"success": true, "message": "Alerts marked as read"})
+				})
+
+				alerts.GET("/summary", func(c *gin.Context) {
+					summary, err := alertService.GetAlertSummary()
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+						return
+					}
+
+					c.JSON(http.StatusOK, gin.H{"success": true, "data": summary})
+				})
 			}
 		}
 	}
 
-	// WebSocket routes
-	r.GET("/ws", handleWebSocket)
-
 	// Start server
-	port := os.Getenv("SERVER_PORT")
+	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
