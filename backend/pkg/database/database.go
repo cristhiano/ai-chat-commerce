@@ -55,10 +55,14 @@ func ConnectDatabase() (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
 
-	// Set connection pool settings
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
+	// Set connection pool settings for search operations
+	sqlDB.SetMaxIdleConns(20)
+	sqlDB.SetMaxOpenConns(200)
 	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	// Enable full-text search extensions
+	db.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+	db.Exec("CREATE EXTENSION IF NOT EXISTS unaccent")
 
 	DB = db
 	log.Println("Database connected successfully")

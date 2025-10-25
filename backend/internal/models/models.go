@@ -18,8 +18,11 @@ type Product struct {
 	Status      string         `gorm:"size:20;default:'active';index" json:"status"`
 	Metadata    datatypes.JSON `gorm:"type:jsonb" json:"metadata"`
 	// Tags        pq.StringArray `gorm:"type:text[]" json:"tags"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	SearchVector string    `gorm:"type:tsvector" json:"search_vector"`
+	SearchWeight float64   `gorm:"default:0" json:"search_weight"`
+	Popularity   int       `gorm:"default:0" json:"popularity"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 
 	// Relationships
 	Category   Category         `gorm:"foreignKey:CategoryID" json:"category"`

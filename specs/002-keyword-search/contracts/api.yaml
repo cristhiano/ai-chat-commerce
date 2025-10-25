@@ -1,0 +1,328 @@
+openapi: 3.0.3
+info:
+  title: Product Keyword Search API
+  version: 1.0.0
+  description: API endpoints for keyword-based product search functionality
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+  - url: https://api.example.com/api
+    description: Production server
+
+paths:
+  /search:
+    post:
+      summary: Search products by keywords
+      description: Search for products using keyword matching with optional filters
+      operationId: searchProducts
+      tags:
+        - Search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Successful search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Invalid search request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /search/suggestions:
+    get:
+      summary: Get search suggestions
+      description: Returns autocomplete suggestions for partial search queries
+      operationId: getSearchSuggestions
+      tags:
+        - Search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Partial search query (minimum 2 characters)
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 200
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of suggestions to return
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Successful suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          description: Invalid request
+        '429':
+          description: Rate limit exceeded
+
+  /search/filters:
+    get:
+      summary: Get available search filters
+      description: Returns available filter options for the current search context
+      operationId: getSearchFilters
+      tags:
+        - Search
+      parameters:
+        - name: category_id
+          in: query
+          required: false
+          description: Filter by category
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Available filters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  price_ranges:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        min:
+                          type: number
+                        max:
+                          type: number
+                        label:
+                          type: string
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        name:
+                          type: string
+                        product_count:
+                          type: integer
+                  availability_options:
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                        - in_stock
+                        - low_stock
+                        - out_of_stock
+
+  /search/analytics:
+    post:
+      summary: Log search analytics
+      description: Track search query and user interactions (internal use)
+      operationId: logSearchAnalytics
+      tags:
+        - Analytics
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyticsRequest'
+      responses:
+        '200':
+          description: Analytics logged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+components:
+  schemas:
+    SearchRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: Search keywords
+          example: "laptop"
+          minLength: 1
+          maxLength: 500
+        filters:
+          type: object
+          properties:
+            category_id:
+              type: string
+              format: uuid
+            price_min:
+              type: number
+              minimum: 0
+            price_max:
+              type: number
+              minimum: 0
+            availability:
+              type: string
+              enum:
+                - all
+                - in_stock
+                - low_stock
+            tags:
+              type: array
+              items:
+                type: string
+        sort_by:
+          type: string
+          enum:
+            - relevance
+            - price_asc
+            - price_desc
+            - popularity
+            - newest
+          default: relevance
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+
+    SearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductResult'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        query:
+          type: string
+        total_results:
+          type: integer
+        response_time_ms:
+          type: integer
+
+    ProductResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+        image_url:
+          type: string
+        availability:
+          type: string
+        relevance_score:
+          type: number
+          description: Relevance score for this product
+
+    Pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        total_pages:
+          type: integer
+        total_results:
+          type: integer
+        page_size:
+          type: integer
+        has_next:
+          type: boolean
+        has_previous:
+          type: boolean
+
+    AnalyticsRequest:
+      type: object
+      required:
+        - query
+        - result_count
+        - response_time_ms
+      properties:
+        query:
+          type: string
+        filters:
+          type: object
+        result_count:
+          type: integer
+        selected_products:
+          type: array
+          items:
+            type: string
+            format: uuid
+        response_time_ms:
+          type: integer
+        cache_hit:
+          type: boolean
+        session_id:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key

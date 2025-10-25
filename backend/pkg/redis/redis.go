@@ -29,9 +29,15 @@ func ConnectRedis() (*redis.Client, error) {
 	}
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", config.Host, config.Port),
-		Password: config.Password,
-		DB:       config.DB,
+		Addr:         fmt.Sprintf("%s:%s", config.Host, config.Port),
+		Password:     config.Password,
+		DB:           config.DB,
+		PoolSize:     20,
+		MinIdleConns: 5,
+		MaxRetries:   3,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
 	})
 
 	// Test connection
@@ -116,6 +122,30 @@ func PublishMessage(ctx context.Context, channel string, message interface{}) er
 // SubscribeToChannel subscribes to a Redis channel
 func SubscribeToChannel(ctx context.Context, channel string) *redis.PubSub {
 	return Client.Subscribe(ctx, channel)
+}
+
+// SetSearchCache stores search results in Redis cache
+func SetSearchCache(ctx context.Context, query string, filters string, data interface{}, expiration time.Duration) error {
+	key := fmt.Sprintf("search:%s:%s", query, filters)
+	return Client.Set(ctx, key, data, expiration).Err()
+}
+
+// GetSearchCache retrieves search results from Redis cache
+func GetSearchCache(ctx context.Context, query string, filters string) (string, error) {
+	key := fmt.Sprintf("search:%s:%s", query, filters)
+	return Client.Get(ctx, key).Result()
+}
+
+// DeleteSearchCache removes search results from Redis cache
+func DeleteSearchCache(ctx context.Context, query string, filters string) error {
+	key := fmt.Sprintf("search:%s:%s", query, filters)
+	return Client.Del(ctx, key).Err()
+}
+
+// SetSearchSuggestions stores autocomplete suggestions in Redis
+func SetSearchSuggestions(ctx context.Context, query string, suggestions interface{}, expiration time.Duration) error {
+	key := fmt.Sprintf("suggestions:%s", query)
+	return Client.Set(ctx, key, suggestions, expiration).Err()
 }
 
 // getEnv gets environment variable with default value

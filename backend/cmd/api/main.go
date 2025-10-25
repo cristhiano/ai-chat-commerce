@@ -3,7 +3,9 @@ package main
 import (
 	"chat-ecommerce-backend/internal/handlers"
 	"chat-ecommerce-backend/internal/middleware"
+	"chat-ecommerce-backend/internal/routes"
 	"chat-ecommerce-backend/internal/services"
+	"chat-ecommerce-backend/internal/services/search"
 	"chat-ecommerce-backend/pkg/database"
 	"log"
 	"net/http"
@@ -47,19 +49,7 @@ func main() {
 
 	// Configure CORS
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"*"}
-	// config.AllowOriginFunc = func(origin string) bool {
-	// 	u, err := url.Parse(origin)
-	// 	if err != nil {
-	// 		return false
-	// 	}
-	// 	switch u.Hostname() {
-	// 	case "localhost", "127.0.0.1", "::1":
-	// 		return true // accepts any port for these hosts
-	// 	default:
-	// 		return false
-	// 	}
-	// }
+	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:5182", "http://127.0.0.1:3000", "http://127.0.0.1:5182"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Session-ID"}
 	config.AllowCredentials = true
@@ -90,6 +80,9 @@ func main() {
 	inventoryService := services.NewInventoryService(db)
 	alertService := services.NewAlertService(db)
 	adminHandler := handlers.NewAdminHandler(adminProductService, productService)
+
+	// Initialize search service
+	searchService := search.NewService(db)
 
 	// API v1 routes
 	v1 := r.Group("/api/v1")
@@ -320,6 +313,9 @@ func main() {
 			}
 		}
 	}
+
+	// Register search routes
+	routes.SetupSearchRoutes(r, searchService)
 
 	// Start server
 	port := os.Getenv("PORT")
