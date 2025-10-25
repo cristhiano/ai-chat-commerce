@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Logs
+*.log
+
+# Cache
+.eslintcache
+*.tsbuildinfo
+
+# Temporary files
+tmp/
+temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+
+# Minified files
+*.min.js
+*.min.css
+
+# Generated files
+*.generated.*

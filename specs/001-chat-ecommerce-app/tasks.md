@@ -66,18 +66,18 @@ Initialize project structure, development environment, and core tooling for Gola
 
 ### Tasks
 
-- [ ] T001 Create Go module and project structure in backend/
-- [ ] T002 Initialize React/Vite project with TypeScript in frontend/
-- [ ] T003 Set up PostgreSQL database with Docker Compose
-- [ ] T004 Configure Redis for caching and sessions
-- [ ] T005 Create environment configuration files (.env templates)
-- [ ] T006 Set up Go dependencies (Gin, GORM, JWT, OpenAI client)
-- [ ] T007 Install React dependencies (Axios, Socket.io, Tailwind CSS)
-- [ ] T008 Configure ESLint and Prettier for frontend
-- [ ] T009 Set up golangci-lint for backend code quality
-- [ ] T010 Create Docker configuration for development environment
-- [ ] T011 Set up GitHub Actions CI/CD pipeline
-- [ ] T012 Create project documentation (README, CONTRIBUTING)
+- [x] T001 Create Go module and project structure in backend/
+- [x] T002 Initialize React/Vite project with TypeScript in frontend/
+- [x] T003 Set up PostgreSQL database with Docker Compose
+- [x] T004 Configure Redis for caching and sessions
+- [x] T005 Create environment configuration files (.env templates)
+- [x] T006 Set up Go dependencies (Gin, GORM, JWT, OpenAI client)
+- [x] T007 Install React dependencies (Axios, Socket.io, Tailwind CSS)
+- [x] T008 Configure ESLint and Prettier for frontend
+- [x] T009 Set up golangci-lint for backend code quality
+- [x] T010 Create Docker configuration for development environment
+- [x] T011 Set up GitHub Actions CI/CD pipeline
+- [x] T012 Create project documentation (README, CONTRIBUTING)
 
 ---
 

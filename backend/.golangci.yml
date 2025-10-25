@@ -1,0 +1,48 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - misspell
+    - gosec
+    - goconst
+    - gocyclo
+    - gofumpt
+    - revive
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+  govet:
+    check-shadowing: true
+  misspell:
+    locale: US
+  revive:
+    min-confidence: 0
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gomnd
+        - goconst
+        - gocyclo
+        - gocognit
+        - nakedret
+        - scopelint
+        - gosec
+        - gocritic
+        - revive
