@@ -22,15 +22,26 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const connectionAttempted = useRef<boolean>(false);
+  const reconnecting = useRef<boolean>(false);
 
-  // Generate session ID if not provided
-  const currentSessionId = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Generate session ID if not provided - use useMemo to prevent regeneration
+  const currentSessionId = React.useMemo(() => {
+    return sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }, [sessionId]);
 
   useEffect(() => {
+    // Prevent multiple connection attempts due to React StrictMode
+    if (connectionAttempted.current) {
+      return;
+    }
+    connectionAttempted.current = true;
+
     connectWebSocket();
     loadChatHistory();
 
     return () => {
+      connectionAttempted.current = false;
       if (wsRef.current) {
         wsRef.current.close();
       }
@@ -42,8 +53,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, [messages]);
 
   const connectWebSocket = () => {
+    // Close existing connection if any
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/v1/chat/ws?session_id=${currentSessionId}`;
+    const wsUrl = `${protocol}//localhost:8080/api/v1/chat/ws?session_id=${currentSessionId}`;
     
     try {
       const ws = new WebSocket(wsUrl);
@@ -67,12 +83,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       ws.onclose = () => {
         setIsConnected(false);
         console.log('WebSocket disconnected');
-        // Attempt to reconnect after 3 seconds
-        setTimeout(() => {
-          if (!isConnected) {
-            connectWebSocket();
-          }
-        }, 3000);
+        // Only attempt to reconnect if not already reconnecting and connection was not intentionally closed
+        if (!reconnecting.current && wsRef.current && wsRef.current.readyState === WebSocket.CLOSED) {
+          reconnecting.current = true;
+          setTimeout(() => {
+            if (!isConnected && connectionAttempted.current) {
+              console.log('Attempting to reconnect...');
+              connectWebSocket();
+            }
+            reconnecting.current = false;
+          }, 3000);
+        }
       };
 
       ws.onerror = (error) => {
@@ -97,7 +118,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           metadata: data.data.metadata,
           timestamp: data.data.timestamp,
         };
-        setMessages(prev => [...prev, message]);
+        // Prevent duplicate messages by checking if message already exists
+        setMessages(prev => {
+          const messageExists = prev.some(msg => msg.id === message.id);
+          if (messageExists) {
+            return prev;
+          }
+          return [...prev, message];
+        });
         break;
 
       case 'typing':
@@ -139,7 +167,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const loadChatHistory = async () => {
     try {
-      const response = await fetch(`/api/v1/chat/history/${currentSessionId}`);
+      const response = await fetch(`http://localhost:8080/api/v1/chat/history/${currentSessionId}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data.messages) {

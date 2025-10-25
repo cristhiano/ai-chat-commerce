@@ -13,44 +13,44 @@ type MessageType string
 
 const (
 	// Connection messages
-	MessageTypeConnect     MessageType = "connect"
-	MessageTypeDisconnect  MessageType = "disconnect"
-	MessageTypePing        MessageType = "ping"
-	MessageTypePong        MessageType = "pong"
-	
+	MessageTypeConnect    MessageType = "connect"
+	MessageTypeDisconnect MessageType = "disconnect"
+	MessageTypePing       MessageType = "ping"
+	MessageTypePong       MessageType = "pong"
+
 	// Authentication messages
 	MessageTypeAuth        MessageType = "auth"
 	MessageTypeAuthSuccess MessageType = "auth_success"
 	MessageTypeAuthError   MessageType = "auth_error"
-	
+
 	// Chat messages
-	MessageTypeChatMessage MessageType = "chat_message"
+	MessageTypeChatMessage  MessageType = "chat_message"
 	MessageTypeChatResponse MessageType = "chat_response"
-	MessageTypeChatTyping  MessageType = "chat_typing"
-	
+	MessageTypeChatTyping   MessageType = "chat_typing"
+
 	// Cart messages
-	MessageTypeCartUpdate  MessageType = "cart_update"
-	MessageTypeCartSync    MessageType = "cart_sync"
-	MessageTypeCartAdd     MessageType = "cart_add"
-	MessageTypeCartRemove  MessageType = "cart_remove"
-	MessageTypeCartClear   MessageType = "cart_clear"
-	
+	MessageTypeCartUpdate MessageType = "cart_update"
+	MessageTypeCartSync   MessageType = "cart_sync"
+	MessageTypeCartAdd    MessageType = "cart_add"
+	MessageTypeCartRemove MessageType = "cart_remove"
+	MessageTypeCartClear  MessageType = "cart_clear"
+
 	// Inventory messages
 	MessageTypeInventoryUpdate MessageType = "inventory_update"
 	MessageTypeInventoryAlert  MessageType = "inventory_alert"
 	MessageTypeInventorySync   MessageType = "inventory_sync"
-	
+
 	// Order messages
-	MessageTypeOrderUpdate     MessageType = "order_update"
-	MessageTypeOrderStatus     MessageType = "order_status"
-	MessageTypeOrderCreated    MessageType = "order_created"
-	MessageTypeOrderCompleted  MessageType = "order_completed"
-	
+	MessageTypeOrderUpdate    MessageType = "order_update"
+	MessageTypeOrderStatus    MessageType = "order_status"
+	MessageTypeOrderCreated   MessageType = "order_created"
+	MessageTypeOrderCompleted MessageType = "order_completed"
+
 	// Notification messages
-	MessageTypeNotification    MessageType = "notification"
-	MessageTypeSystemAlert     MessageType = "system_alert"
-	MessageTypeUserAlert       MessageType = "user_alert"
-	
+	MessageTypeNotification MessageType = "notification"
+	MessageTypeSystemAlert  MessageType = "system_alert"
+	MessageTypeUserAlert    MessageType = "user_alert"
+
 	// Error messages
 	MessageTypeError           MessageType = "error"
 	MessageTypeValidationError MessageType = "validation_error"
@@ -184,24 +184,24 @@ type CartItemData struct {
 
 // InventoryUpdateData represents inventory update data
 type InventoryUpdateData struct {
-	ProductID     uuid.UUID             `json:"product_id"`
-	Quantity      int                   `json:"quantity"`
-	Reserved      int                   `json:"reserved"`
-	Available     int                   `json:"available"`
-	Location      string                `json:"location,omitempty"`
-	LastUpdated   time.Time             `json:"last_updated"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	ProductID   uuid.UUID              `json:"product_id"`
+	Quantity    int                    `json:"quantity"`
+	Reserved    int                    `json:"reserved"`
+	Available   int                    `json:"available"`
+	Location    string                 `json:"location,omitempty"`
+	LastUpdated time.Time              `json:"last_updated"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // OrderUpdateData represents order update data
 type OrderUpdateData struct {
-	OrderID     uuid.UUID             `json:"order_id"`
-	UserID      uuid.UUID             `json:"user_id"`
-	Status      string                `json:"status"`
-	Total       float64               `json:"total"`
-	Currency    string                `json:"currency"`
-	UpdatedAt   time.Time             `json:"updated_at"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	OrderID   uuid.UUID              `json:"order_id"`
+	UserID    uuid.UUID              `json:"user_id"`
+	Status    string                 `json:"status"`
+	Total     float64                `json:"total"`
+	Currency  string                 `json:"currency"`
+	UpdatedAt time.Time              `json:"updated_at"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // NotificationData represents notification data
@@ -229,13 +229,13 @@ type NotificationAction struct {
 
 // ErrorData represents error data
 type ErrorData struct {
-	ErrorID    string                 `json:"error_id"`
-	Code       string                 `json:"code"`
-	Message    string                 `json:"message"`
-	Details    map[string]interface{} `json:"details,omitempty"`
-	Timestamp  time.Time              `json:"timestamp"`
-	SessionID  string                 `json:"session_id,omitempty"`
-	UserID     *uuid.UUID             `json:"user_id,omitempty"`
+	ErrorID   string                 `json:"error_id"`
+	Code      string                 `json:"code"`
+	Message   string                 `json:"message"`
+	Details   map[string]interface{} `json:"details,omitempty"`
+	Timestamp time.Time              `json:"timestamp"`
+	SessionID string                 `json:"session_id,omitempty"`
+	UserID    *uuid.UUID             `json:"user_id,omitempty"`
 }
 
 // AuthData represents authentication data
@@ -359,11 +359,11 @@ func (mf *MessageFactory) CreateCartUpdate(sessionID string, userID *uuid.UUID, 
 		"total":      total,
 		"currency":   "USD",
 	}
-	
+
 	if userID != nil {
 		data["user_id"] = userID
 	}
-	
+
 	return NewMessageBuilder(MessageTypeCartUpdate).
 		WithSession(sessionID).
 		WithData(data).
@@ -414,11 +414,26 @@ func (mf *MessageFactory) CreatePing(sequence int) *WebSocketMessage {
 		Build()
 }
 
-// CreatePong creates a pong message
-func (mf *MessageFactory) CreatePong(sequence int, latency int64) *WebSocketMessage {
-	return NewMessageBuilder(MessageTypePong).
-		WithDataField("timestamp", time.Now()).
-		WithDataField("sequence", sequence).
-		WithDataField("latency_ms", latency).
+// CreateCartUpdateMessage creates a cart update message
+func CreateCartUpdateMessage(cartData interface{}, sessionID string, userID *uuid.UUID) *WebSocketMessage {
+	return NewMessageBuilder(MessageTypeCartUpdate).
+		WithSession(sessionID).
+		WithDataField("cart_data", cartData).
+		Build()
+}
+
+// CreateInventoryUpdateMessage creates an inventory update message
+func CreateInventoryUpdateMessage(inventoryData interface{}, sessionID string, userID *uuid.UUID) *WebSocketMessage {
+	return NewMessageBuilder(MessageTypeInventoryUpdate).
+		WithSession(sessionID).
+		WithDataField("inventory_data", inventoryData).
+		Build()
+}
+
+// CreateNotificationMessage creates a notification message
+func CreateNotificationMessage(notificationData interface{}, sessionID string, userID *uuid.UUID) *WebSocketMessage {
+	return NewMessageBuilder(MessageTypeNotification).
+		WithSession(sessionID).
+		WithDataField("notification_data", notificationData).
 		Build()
 }

@@ -15,42 +15,42 @@ import (
 // WebSocketService manages the WebSocket server and all real-time functionality
 type WebSocketService struct {
 	// Core components
-	hub              *Hub
-	clientManager    *ClientManager
-	authManager      *WebSocketAuthManager
-	cartSyncManager  *CartSyncManager
-	inventoryManager *InventoryBroadcastManager
+	hub                 *Hub
+	clientManager       *ClientManager
+	authManager         *WebSocketAuthManager
+	cartSyncManager     *CartSyncManager
+	inventoryManager    *InventoryBroadcastManager
 	notificationManager *NotificationManager
-	sessionManager   *SessionManager
-	connectionManager *ConnectionManager
-	
+	sessionManager      *SessionManager
+	connectionManager   *ConnectionManager
+
 	// Configuration
-	upgrader         websocket.Upgrader
-	readBufferSize   int
-	writeBufferSize  int
-	checkOrigin      func(r *http.Request) bool
-	
+	upgrader        websocket.Upgrader
+	readBufferSize  int
+	writeBufferSize int
+	checkOrigin     func(r *http.Request) bool
+
 	// Context for cancellation
-	ctx              context.Context
-	cancel           context.CancelFunc
-	
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Statistics
-	stats            *WebSocketStats
-	
+	stats *WebSocketStats
+
 	// Mutex for thread-safe operations
-	mu               sync.RWMutex
+	mu sync.RWMutex
 }
 
 // WebSocketStats holds WebSocket service statistics
 type WebSocketStats struct {
-	TotalConnections    int64
-	ActiveConnections   int64
-	TotalMessages       int64
-	MessagesPerSecond   float64
-	AverageLatency      time.Duration
-	ErrorCount          int64
-	LastReset           time.Time
-	mu                  sync.RWMutex
+	TotalConnections  int64
+	ActiveConnections int64
+	TotalMessages     int64
+	MessagesPerSecond float64
+	AverageLatency    time.Duration
+	ErrorCount        int64
+	LastReset         time.Time
+	mu                sync.RWMutex
 }
 
 // NewWebSocketService creates a new WebSocket service
@@ -65,16 +65,16 @@ func NewWebSocketService(
 	connectionManager *ConnectionManager,
 ) *WebSocketService {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	service := &WebSocketService{
-		hub:               hub,
-		clientManager:     clientManager,
-		authManager:       authManager,
-		cartSyncManager:   cartSyncManager,
-		inventoryManager:  inventoryManager,
+		hub:                 hub,
+		clientManager:       clientManager,
+		authManager:         authManager,
+		cartSyncManager:     cartSyncManager,
+		inventoryManager:    inventoryManager,
 		notificationManager: notificationManager,
-		sessionManager:    sessionManager,
-		connectionManager: connectionManager,
+		sessionManager:      sessionManager,
+		connectionManager:   connectionManager,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -91,10 +91,10 @@ func NewWebSocketService(
 			LastReset: time.Now(),
 		},
 	}
-	
+
 	// Set up event handlers
 	service.setupEventHandlers()
-	
+
 	return service
 }
 
@@ -108,7 +108,7 @@ func (ws *WebSocketService) HandleWebSocket(w http.ResponseWriter, r *http.Reque
 	if sessionID == "" {
 		sessionID = uuid.New().String()
 	}
-	
+
 	// Upgrade HTTP connection to WebSocket
 	conn, err := ws.upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -116,7 +116,7 @@ func (ws *WebSocketService) HandleWebSocket(w http.ResponseWriter, r *http.Reque
 		ws.stats.incrementErrorCount()
 		return
 	}
-	
+
 	// Add client to manager
 	client, err := ws.clientManager.AddClient(conn, sessionID)
 	if err != nil {
@@ -125,49 +125,49 @@ func (ws *WebSocketService) HandleWebSocket(w http.ResponseWriter, r *http.Reque
 		ws.stats.incrementErrorCount()
 		return
 	}
-	
+
 	// Register client with session manager
 	ws.sessionManager.RegisterClient(client.ID, sessionID)
-	
+
 	// Start message processing for this client
 	go ws.handleClientMessages(client)
-	
+
 	ws.stats.incrementTotalConnections()
 	ws.stats.incrementActiveConnections()
-	
+
 	log.Printf("WebSocket connection established: %s (Session: %s)", client.ID, sessionID)
 }
 
 // handleClientMessages processes messages for a specific client
-func (ws *WebSocketService) handleClientMessages(client *Client) {
+func (ws *WebSocketService) handleClientMessages(client *ClientInfo) {
 	defer func() {
 		// Cleanup when client disconnects
 		ws.clientManager.RemoveClient(client.ID)
 		ws.sessionManager.UnregisterClient(client.ID)
 		ws.stats.decrementActiveConnections()
-		
+
 		log.Printf("Client message handler stopped: %s", client.ID)
 	}()
-	
+
 	for {
 		select {
 		case <-client.ctx.Done():
 			return
 		case message := <-client.Receive:
 			ws.processMessage(client, message)
-		case <-client.Close:
+		case <-client.CloseChan:
 			return
 		}
 	}
 }
 
 // processMessage processes an incoming message from a client
-func (ws *WebSocketService) processMessage(client *Client, message *WebSocketMessage) {
+func (ws *WebSocketService) processMessage(client *ClientInfo, message *WebSocketMessage) {
 	ws.stats.incrementTotalMessages()
-	
+
 	// Update client activity
 	client.UpdateActivity()
-	
+
 	// Process message based on type
 	switch message.Type {
 	case MessageTypeAuth:
@@ -187,27 +187,27 @@ func (ws *WebSocketService) processMessage(client *Client, message *WebSocketMes
 }
 
 // handleAuthMessage handles authentication messages
-func (ws *WebSocketService) handleAuthMessage(client *Client, message *WebSocketMessage) {
+func (ws *WebSocketService) handleAuthMessage(client *ClientInfo, message *WebSocketMessage) {
 	token, ok := message.Data["token"].(string)
 	if !ok {
 		ws.sendError(client, "invalid_auth_data", "Missing or invalid token")
 		return
 	}
-	
+
 	// Authenticate token
 	authResult, err := ws.authManager.AuthenticateToken(token)
 	if err != nil {
 		ws.sendError(client, "auth_error", fmt.Sprintf("Authentication failed: %v", err))
 		return
 	}
-	
+
 	if !authResult.IsValid {
 		ws.sendError(client, "auth_failed", "Invalid token")
 		return
 	}
-	
+
 	// Create auth session
-	session, err := ws.authManager.CreateAuthSession(
+	_, err = ws.authManager.CreateAuthSession(
 		*authResult.UserID,
 		authResult.SessionID,
 		authResult.AuthLevel,
@@ -217,10 +217,12 @@ func (ws *WebSocketService) handleAuthMessage(client *Client, message *WebSocket
 		ws.sendError(client, "session_creation_failed", fmt.Sprintf("Failed to create session: %v", err))
 		return
 	}
-	
+
+	log.Printf("Auth session created for user %s", authResult.UserID)
+
 	// Authenticate client
 	client.Authenticate(*authResult.UserID, authResult.AuthLevel, authResult.Permissions)
-	
+
 	// Send success response
 	successMsg := NewMessageBuilder(MessageTypeAuthSuccess).
 		WithSession(authResult.SessionID).
@@ -230,41 +232,45 @@ func (ws *WebSocketService) handleAuthMessage(client *Client, message *WebSocket
 		WithDataField("auth_level", authResult.AuthLevel).
 		WithDataField("permissions", authResult.Permissions).
 		Build()
-	
+
 	client.SendMessage(successMsg)
-	
+
 	log.Printf("Client authenticated: %s (User: %s)", client.ID, authResult.UserID)
 }
 
 // handlePingMessage handles ping messages
-func (ws *WebSocketService) handlePingMessage(client *Client, message *WebSocketMessage) {
+func (ws *WebSocketService) handlePingMessage(client *ClientInfo, message *WebSocketMessage) {
 	sequence, _ := message.Data["sequence"].(int)
-	
+
 	// Calculate latency
 	latency := time.Since(message.Timestamp)
-	
+
 	// Send pong response
-	pongMsg := NewMessageFactory().CreatePong(sequence, latency.Milliseconds())
+	pongMsg := NewMessageBuilder(MessageTypePong).
+		WithDataField("timestamp", time.Now()).
+		WithDataField("sequence", sequence).
+		WithDataField("latency_ms", latency.Milliseconds()).
+		Build()
 	pongMsg.SetSession(client.SessionID)
-	
+
 	client.SendMessage(pongMsg)
 }
 
 // handleChatMessage handles chat messages
-func (ws *WebSocketService) handleChatMessage(client *Client, message *WebSocketMessage) {
+func (ws *WebSocketService) handleChatMessage(client *ClientInfo, message *WebSocketMessage) {
 	// Check if client is authenticated for chat
 	if !ws.authManager.CheckPermission(client.SessionID, PermissionChatAccess) {
 		ws.sendError(client, "permission_denied", "Chat access denied")
 		return
 	}
-	
+
 	// Process chat message (this would integrate with chat service)
 	content, ok := message.Data["content"].(string)
 	if !ok {
 		ws.sendError(client, "invalid_chat_data", "Missing or invalid content")
 		return
 	}
-	
+
 	// Broadcast to other clients in the same session
 	chatMsg := NewMessageBuilder(MessageTypeChatMessage).
 		WithSession(client.SessionID).
@@ -272,36 +278,38 @@ func (ws *WebSocketService) handleChatMessage(client *Client, message *WebSocket
 		WithDataField("message_type", "user").
 		WithDataField("timestamp", time.Now()).
 		Build()
-	
+
 	ws.clientManager.BroadcastToSession(client.SessionID, chatMsg)
 }
 
 // handleCartMessage handles cart-related messages
-func (ws *WebSocketService) handleCartMessage(client *Client, message *WebSocketMessage) {
+func (ws *WebSocketService) handleCartMessage(client *ClientInfo, message *WebSocketMessage) {
 	// Check cart permissions
 	if !ws.authManager.CheckPermission(client.SessionID, PermissionWriteCart) {
 		ws.sendError(client, "permission_denied", "Cart write access denied")
 		return
 	}
-	
+
 	// Process cart message through cart sync manager
-	ws.cartSyncManager.ProcessCartMessage(client, message)
+	// TODO: Implement ProcessCartMessage method in CartSyncManager
+	log.Printf("Processing cart message from client %s", client.ID)
 }
 
 // handleInventorySyncMessage handles inventory sync messages
-func (ws *WebSocketService) handleInventorySyncMessage(client *Client, message *WebSocketMessage) {
+func (ws *WebSocketService) handleInventorySyncMessage(client *ClientInfo, message *WebSocketMessage) {
 	// Check inventory read permissions
 	if !ws.authManager.CheckPermission(client.SessionID, PermissionReadInventory) {
 		ws.sendError(client, "permission_denied", "Inventory read access denied")
 		return
 	}
-	
+
 	// Process inventory sync through inventory manager
-	ws.inventoryManager.ProcessSyncRequest(client, message)
+	// TODO: Implement ProcessSyncRequest method in InventoryBroadcastManager
+	log.Printf("Processing inventory sync request from client %s", client.ID)
 }
 
 // sendError sends an error message to a client
-func (ws *WebSocketService) sendError(client *Client, code, message string) {
+func (ws *WebSocketService) sendError(client *ClientInfo, code, message string) {
 	errorMsg := NewMessageFactory().CreateError(code, message, client.SessionID, client.UserID)
 	client.SendMessage(errorMsg)
 	ws.stats.incrementErrorCount()
@@ -332,7 +340,7 @@ func (ws *WebSocketService) SendNotification(userID *uuid.UUID, sessionID string
 		WithDataField("priority", notification.Priority).
 		WithDataField("timestamp", time.Now()).
 		Build()
-	
+
 	if userID != nil {
 		message.SetUser(*userID)
 		return ws.BroadcastToUser(*userID, message)
@@ -340,7 +348,7 @@ func (ws *WebSocketService) SendNotification(userID *uuid.UUID, sessionID string
 		message.SetSession(sessionID)
 		return ws.BroadcastToSession(sessionID, message)
 	}
-	
+
 	return fmt.Errorf("either userID or sessionID must be provided")
 }
 
@@ -348,24 +356,24 @@ func (ws *WebSocketService) SendNotification(userID *uuid.UUID, sessionID string
 func (ws *WebSocketService) GetStats() map[string]interface{} {
 	ws.stats.mu.RLock()
 	defer ws.stats.mu.RUnlock()
-	
+
 	clientStats := map[string]interface{}{
-		"total_clients":    ws.clientManager.GetClientCount(),
-		"total_sessions":   ws.clientManager.GetSessionCount(),
-		"total_users":      ws.clientManager.GetUserCount(),
+		"total_clients":  ws.clientManager.GetClientCount(),
+		"total_sessions": ws.clientManager.GetSessionCount(),
+		"total_users":    ws.clientManager.GetUserCount(),
 	}
-	
+
 	authStats := ws.authManager.GetAuthStats()
-	
+
 	return map[string]interface{}{
 		"websocket": map[string]interface{}{
-			"total_connections":  ws.stats.TotalConnections,
-			"active_connections": ws.stats.ActiveConnections,
-			"total_messages":     ws.stats.TotalMessages,
+			"total_connections":   ws.stats.TotalConnections,
+			"active_connections":  ws.stats.ActiveConnections,
+			"total_messages":      ws.stats.TotalMessages,
 			"messages_per_second": ws.stats.MessagesPerSecond,
 			"average_latency_ms":  ws.stats.AverageLatency.Milliseconds(),
-			"error_count":        ws.stats.ErrorCount,
-			"uptime_seconds":     time.Since(ws.stats.LastReset).Seconds(),
+			"error_count":         ws.stats.ErrorCount,
+			"uptime_seconds":      time.Since(ws.stats.LastReset).Seconds(),
 		},
 		"clients": clientStats,
 		"auth":    authStats,
@@ -376,19 +384,19 @@ func (ws *WebSocketService) GetStats() map[string]interface{} {
 func (ws *WebSocketService) setupEventHandlers() {
 	ws.clientManager.SetEventHandlers(
 		// OnConnect
-		func(client *Client) {
+		func(client *ClientInfo) {
 			log.Printf("Client connected: %s", client.ID)
 		},
 		// OnDisconnect
-		func(client *Client) {
+		func(client *ClientInfo) {
 			log.Printf("Client disconnected: %s", client.ID)
 		},
 		// OnMessage
-		func(client *Client, message *WebSocketMessage) {
+		func(client *ClientInfo, message *WebSocketMessage) {
 			// Message processing is handled in handleClientMessages
 		},
 		// OnError
-		func(client *Client, err error) {
+		func(client *ClientInfo, err error) {
 			log.Printf("Client error: %s - %v", client.ID, err)
 			ws.stats.incrementErrorCount()
 		},

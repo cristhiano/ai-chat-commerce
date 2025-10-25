@@ -12,9 +12,15 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("Warning: .env file not found, using system environment variables")
+	}
+
 	// Initialize database
 	db, err := database.ConnectDatabase()
 	if err != nil {
@@ -129,6 +135,18 @@ func main() {
 				chat.GET("/session/:session_id", chatHandler.GetChatSession)
 			}
 
+			// Cart routes (public - session-based)
+			cart := public.Group("cart")
+			{
+				cart.GET("/", cartHandler.GetCart)
+				cart.POST("/add", cartHandler.AddToCart)
+				cart.PUT("/update", cartHandler.UpdateCartItem)
+				cart.DELETE("/remove/:product_id", cartHandler.RemoveFromCart)
+				cart.DELETE("/clear", cartHandler.ClearCart)
+				cart.POST("/calculate", cartHandler.CalculateTotals)
+				cart.GET("/count", cartHandler.GetCartItemCount)
+			}
+
 			// Payment webhook (public)
 			payments := public.Group("payments")
 			{
@@ -148,18 +166,6 @@ func main() {
 				users.POST("/change-password", userHandler.ChangePassword)
 				users.DELETE("/account", userHandler.DeleteAccount)
 				users.POST("/verify-email", userHandler.VerifyEmail)
-			}
-
-			// Cart routes
-			cart := protected.Group("cart")
-			{
-				cart.GET("/", cartHandler.GetCart)
-				cart.POST("/add", cartHandler.AddToCart)
-				cart.PUT("/update", cartHandler.UpdateCartItem)
-				cart.DELETE("/remove/:product_id", cartHandler.RemoveFromCart)
-				cart.DELETE("/clear", cartHandler.ClearCart)
-				cart.POST("/calculate", cartHandler.CalculateTotals)
-				cart.GET("/count", cartHandler.GetCartItemCount)
 			}
 
 			// Order routes

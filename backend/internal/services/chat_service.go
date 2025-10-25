@@ -8,9 +8,11 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sashabaranov/go-openai"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -34,8 +36,8 @@ func NewChatService(db *gorm.DB, productService *ProductService, cartService *Sh
 	}
 }
 
-// ChatMessage represents a message in the chat conversation
-type ChatMessage struct {
+// ChatMessageService represents a message in the chat conversation for service layer
+type ChatMessageService struct {
 	ID        uuid.UUID              `json:"id"`
 	SessionID string                 `json:"session_id"`
 	UserID    *uuid.UUID             `json:"user_id,omitempty"`
@@ -325,16 +327,35 @@ func (s *ChatService) executeAction(action ChatAction, userID *uuid.UUID, sessio
 }
 
 // GetConversationHistory retrieves conversation history for a session
-func (s *ChatService) GetConversationHistory(sessionID string, limit int) ([]ChatMessage, error) {
-	var messages []ChatMessage
+func (s *ChatService) GetConversationHistory(sessionID string, limit int) ([]ChatMessageService, error) {
+	var dbMessages []models.ChatMessage
 
 	err := s.db.Where("session_id = ?", sessionID).
 		Order("created_at DESC").
 		Limit(limit).
-		Find(&messages).Error
+		Find(&dbMessages).Error
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Convert to service layer messages
+	var messages []ChatMessageService
+	for _, msg := range dbMessages {
+		var metadata map[string]interface{}
+		if msg.Metadata != nil {
+			json.Unmarshal(msg.Metadata, &metadata)
+		}
+
+		messages = append(messages, ChatMessageService{
+			ID:        msg.ID,
+			SessionID: msg.SessionID,
+			UserID:    msg.UserID,
+			Role:      msg.Role,
+			Content:   msg.Content,
+			Metadata:  metadata,
+			CreatedAt: msg.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		})
 	}
 
 	// Reverse to get chronological order
@@ -347,14 +368,28 @@ func (s *ChatService) GetConversationHistory(sessionID string, limit int) ([]Cha
 
 // saveMessage saves a message to the database
 func (s *ChatService) saveMessage(sessionID string, userID *uuid.UUID, role, content string, metadata map[string]interface{}) error {
-	message := ChatMessage{
-		ID:        uuid.New(),
-		SessionID: sessionID,
-		UserID:    userID,
-		Role:      role,
-		Content:   content,
-		Metadata:  metadata,
-		CreatedAt: "now()",
+	// First, get the chat session to get its ID
+	var chatSession models.ChatSession
+	err := s.db.Where("session_id = ?", sessionID).First(&chatSession).Error
+	if err != nil {
+		return fmt.Errorf("failed to find chat session: %v", err)
+	}
+
+	var metadataJSON datatypes.JSON
+	if metadata != nil {
+		metadataBytes, _ := json.Marshal(metadata)
+		metadataJSON = metadataBytes
+	}
+
+	message := models.ChatMessage{
+		ID:            uuid.New(),
+		ChatSessionID: chatSession.ID,
+		SessionID:     sessionID,
+		UserID:        userID,
+		Role:          role,
+		Content:       content,
+		Metadata:      metadataJSON,
+		CreatedAt:     time.Now(),
 	}
 
 	return s.db.Create(&message).Error
@@ -362,22 +397,41 @@ func (s *ChatService) saveMessage(sessionID string, userID *uuid.UUID, role, con
 
 // GetChatSession retrieves or creates a chat session
 func (s *ChatService) GetChatSession(sessionID string, userID *uuid.UUID) (*ChatSession, error) {
-	var session ChatSession
+	var dbSession models.ChatSession
 
-	err := s.db.Where("id = ?", sessionID).First(&session).Error
+	err := s.db.Where("session_id = ?", sessionID).First(&dbSession).Error
 	if err == gorm.ErrRecordNotFound {
 		// Create new session
-		session = ChatSession{
-			ID:        sessionID,
+		contextJSON, _ := json.Marshal(make(map[string]interface{}))
+		dbSession = models.ChatSession{
+			ID:        uuid.New(),
+			SessionID: sessionID,
 			UserID:    userID,
-			Context:   make(map[string]interface{}),
-			CreatedAt: "now()",
-			UpdatedAt: "now()",
+			Context:   contextJSON,
+			CreatedAt: time.Now(),
+			ExpiresAt: time.Now().Add(24 * time.Hour),
 		}
-		err = s.db.Create(&session).Error
+		err = s.db.Create(&dbSession).Error
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return &session, err
+	// Convert to service layer session
+	var context map[string]interface{}
+	if dbSession.Context != nil {
+		json.Unmarshal(dbSession.Context, &context)
+	}
+
+	session := &ChatSession{
+		ID:        dbSession.SessionID,
+		UserID:    dbSession.UserID,
+		Context:   context,
+		CreatedAt: dbSession.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt: dbSession.LastActivity.Format("2006-01-02T15:04:05Z"),
+	}
+
+	return session, nil
 }
 
 // SearchProducts searches for products based on natural language query

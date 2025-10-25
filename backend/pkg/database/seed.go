@@ -22,6 +22,7 @@ func MigrateDatabase(db *gorm.DB) error {
 		&models.InventoryReservation{},
 		&models.User{},
 		&models.ChatSession{},
+		&models.ChatMessage{},
 		&models.ShoppingCart{},
 		&models.Order{},
 		&models.OrderItem{},

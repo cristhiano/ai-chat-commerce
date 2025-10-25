@@ -166,22 +166,23 @@ type ChatSession struct {
 
 	// Relationships
 	User     User          `gorm:"foreignKey:UserID" json:"user"`
-	Messages []ChatMessage `gorm:"foreignKey:SessionID;references:SessionID" json:"messages"`
+	Messages []ChatMessage `gorm:"foreignKey:ChatSessionID" json:"messages"`
 }
 
 // ChatMessage represents a message in a chat conversation
 type ChatMessage struct {
-	ID        uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	SessionID string         `gorm:"size:100;not null;index" json:"session_id"`
-	UserID    *uuid.UUID     `gorm:"type:uuid;index" json:"user_id"`
-	Role      string         `gorm:"size:20;not null" json:"role"` // "user", "assistant", "system"
-	Content   string         `gorm:"type:text;not null" json:"content"`
-	Metadata  datatypes.JSON `gorm:"type:jsonb" json:"metadata"`
-	CreatedAt time.Time      `json:"created_at"`
+	ID            uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	ChatSessionID uuid.UUID      `gorm:"type:uuid;not null;index" json:"chat_session_id"`
+	SessionID     string         `gorm:"size:100;not null;index" json:"session_id"`
+	UserID        *uuid.UUID     `gorm:"type:uuid;index" json:"user_id"`
+	Role          string         `gorm:"size:20;not null" json:"role"` // "user", "assistant", "system"
+	Content       string         `gorm:"type:text;not null" json:"content"`
+	Metadata      datatypes.JSON `gorm:"type:jsonb" json:"metadata"`
+	CreatedAt     time.Time      `json:"created_at"`
 
 	// Relationships
-	User    User        `gorm:"foreignKey:UserID" json:"user"`
-	Session ChatSession `gorm:"foreignKey:SessionID;references:SessionID" json:"session"`
+	User        User        `gorm:"foreignKey:UserID" json:"user"`
+	ChatSession ChatSession `gorm:"foreignKey:ChatSessionID" json:"chat_session"`
 }
 
 // ShoppingCart represents unified cart state

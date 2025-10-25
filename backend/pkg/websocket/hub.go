@@ -6,19 +6,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 )
 
 // Hub maintains the set of active clients and broadcasts messages
 type Hub struct {
 	// Registered clients
-	clients map[string]*Client
+	clients map[string]*ClientInfo
 
 	// Register requests from clients
-	register chan *Client
+	register chan *ClientInfo
 
 	// Unregister requests from clients
-	unregister chan *Client
+	unregister chan *ClientInfo
 
 	// Broadcast messages to all clients
 	broadcast chan *WebSocketMessage
@@ -48,9 +47,9 @@ type UserMessage struct {
 // NewHub creates a new WebSocket hub
 func NewHub() *Hub {
 	return &Hub{
-		clients:          make(map[string]*Client),
-		register:         make(chan *Client),
-		unregister:       make(chan *Client),
+		clients:          make(map[string]*ClientInfo),
+		register:         make(chan *ClientInfo),
+		unregister:       make(chan *ClientInfo),
 		broadcast:        make(chan *WebSocketMessage),
 		sessionBroadcast: make(chan SessionMessage),
 		userBroadcast:    make(chan UserMessage),
@@ -137,12 +136,12 @@ func (h *Hub) Run() {
 }
 
 // RegisterClient registers a new client with the hub
-func (h *Hub) RegisterClient(client *Client) {
+func (h *Hub) RegisterClient(client *ClientInfo) {
 	h.register <- client
 }
 
 // UnregisterClient unregisters a client from the hub
-func (h *Hub) UnregisterClient(client *Client) {
+func (h *Hub) UnregisterClient(client *ClientInfo) {
 	h.unregister <- client
 }
 
@@ -175,11 +174,11 @@ func (h *Hub) GetClientCount() int {
 }
 
 // GetClientsBySession returns all clients for a specific session
-func (h *Hub) GetClientsBySession(sessionID string) []*Client {
+func (h *Hub) GetClientsBySession(sessionID string) []*ClientInfo {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
-	var clients []*Client
+
+	var clients []*ClientInfo
 	for _, client := range h.clients {
 		if client.SessionID == sessionID {
 			clients = append(clients, client)
@@ -189,11 +188,11 @@ func (h *Hub) GetClientsBySession(sessionID string) []*Client {
 }
 
 // GetClientsByUser returns all clients for a specific user
-func (h *Hub) GetClientsByUser(userID uuid.UUID) []*Client {
+func (h *Hub) GetClientsByUser(userID uuid.UUID) []*ClientInfo {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
-	var clients []*Client
+
+	var clients []*ClientInfo
 	for _, client := range h.clients {
 		if client.UserID != nil && *client.UserID == userID {
 			clients = append(clients, client)
@@ -206,12 +205,12 @@ func (h *Hub) GetClientsByUser(userID uuid.UUID) []*Client {
 func (h *Hub) Stop() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	// Close all client connections
 	for _, client := range h.clients {
 		close(client.Send)
 	}
-	
+
 	// Clear clients map
-	h.clients = make(map[string]*Client)
+	h.clients = make(map[string]*ClientInfo)
 }

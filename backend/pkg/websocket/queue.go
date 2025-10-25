@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -13,39 +12,39 @@ import (
 
 // QueueMessage represents a message in the queue
 type QueueMessage struct {
-	ID        string      `json:"id"`
-	Type      MessageType `json:"type"`
-	Data      interface{} `json:"data"`
-	SessionID string      `json:"session_id"`
-	UserID    *uuid.UUID  `json:"user_id"`
-	Timestamp time.Time   `json:"timestamp"`
-	Retries   int         `json:"retries"`
-	MaxRetries int        `json:"max_retries"`
-	Priority  int         `json:"priority"` // Higher number = higher priority
+	ID         string      `json:"id"`
+	Type       MessageType `json:"type"`
+	Data       interface{} `json:"data"`
+	SessionID  string      `json:"session_id"`
+	UserID     *uuid.UUID  `json:"user_id"`
+	Timestamp  time.Time   `json:"timestamp"`
+	Retries    int         `json:"retries"`
+	MaxRetries int         `json:"max_retries"`
+	Priority   int         `json:"priority"` // Higher number = higher priority
 }
 
 // MessageQueue handles reliable message delivery
 type MessageQueue struct {
 	// Queue storage
 	queue []QueueMessage
-	
+
 	// Failed messages for retry
 	failedMessages []QueueMessage
-	
+
 	// Mutex for thread-safe operations
 	mu sync.RWMutex
-	
+
 	// Hub reference for message delivery
 	hub *Hub
-	
+
 	// Configuration
 	maxRetries int
 	retryDelay time.Duration
-	
+
 	// Context for cancellation
-	ctx context.Context
+	ctx    context.Context
 	cancel context.CancelFunc
-	
+
 	// Processing control
 	processing bool
 	stopChan   chan struct{}
@@ -54,16 +53,16 @@ type MessageQueue struct {
 // NewMessageQueue creates a new message queue
 func NewMessageQueue(hub *Hub, maxRetries int, retryDelay time.Duration) *MessageQueue {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &MessageQueue{
-		queue:       make([]QueueMessage, 0),
+		queue:          make([]QueueMessage, 0),
 		failedMessages: make([]QueueMessage, 0),
-		hub:         hub,
-		maxRetries:  maxRetries,
-		retryDelay:  retryDelay,
-		ctx:         ctx,
-		cancel:      cancel,
-		stopChan:    make(chan struct{}),
+		hub:            hub,
+		maxRetries:     maxRetries,
+		retryDelay:     retryDelay,
+		ctx:            ctx,
+		cancel:         cancel,
+		stopChan:       make(chan struct{}),
 	}
 }
 
@@ -71,7 +70,7 @@ func NewMessageQueue(hub *Hub, maxRetries int, retryDelay time.Duration) *Messag
 func (mq *MessageQueue) Enqueue(message QueueMessage) error {
 	mq.mu.Lock()
 	defer mq.mu.Unlock()
-	
+
 	// Set default values
 	if message.ID == "" {
 		message.ID = uuid.New().String()
@@ -82,10 +81,10 @@ func (mq *MessageQueue) Enqueue(message QueueMessage) error {
 	if message.MaxRetries == 0 {
 		message.MaxRetries = mq.maxRetries
 	}
-	
+
 	// Add to queue based on priority
 	mq.insertByPriority(message)
-	
+
 	log.Printf("Message %s enqueued. Queue size: %d", message.ID, len(mq.queue))
 	return nil
 }
@@ -100,7 +99,7 @@ func (mq *MessageQueue) insertByPriority(message QueueMessage) {
 			break
 		}
 	}
-	
+
 	// Insert at the found position
 	if insertIndex == len(mq.queue) {
 		mq.queue = append(mq.queue, message)
@@ -114,14 +113,14 @@ func (mq *MessageQueue) insertByPriority(message QueueMessage) {
 func (mq *MessageQueue) Dequeue() (*QueueMessage, bool) {
 	mq.mu.Lock()
 	defer mq.mu.Unlock()
-	
+
 	if len(mq.queue) == 0 {
 		return nil, false
 	}
-	
+
 	message := mq.queue[0]
 	mq.queue = mq.queue[1:]
-	
+
 	return &message, true
 }
 
@@ -130,16 +129,16 @@ func (mq *MessageQueue) ProcessQueue() {
 	mq.mu.Lock()
 	mq.processing = true
 	mq.mu.Unlock()
-	
+
 	defer func() {
 		mq.mu.Lock()
 		mq.processing = false
 		mq.mu.Unlock()
 	}()
-	
+
 	ticker := time.NewTicker(100 * time.Millisecond) // Process every 100ms
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-mq.ctx.Done():
@@ -160,13 +159,13 @@ func (mq *MessageQueue) processMessages() {
 		if !ok {
 			break
 		}
-		
+
 		if !mq.deliverMessage(*message) {
 			// Message delivery failed, add to failed messages
 			mq.addToFailedMessages(*message)
 		}
 	}
-	
+
 	// Process failed messages for retry
 	mq.processFailedMessages()
 }
@@ -174,15 +173,22 @@ func (mq *MessageQueue) processMessages() {
 // deliverMessage attempts to deliver a message
 func (mq *MessageQueue) deliverMessage(message QueueMessage) bool {
 	// Convert to regular message
-	wsMessage := Message{
+	wsMessage := &WebSocketMessage{
 		ID:        message.ID,
 		Type:      message.Type,
-		Data:      message.Data,
+		Data:      make(map[string]interface{}),
 		Timestamp: message.Timestamp,
 		SessionID: message.SessionID,
 		UserID:    message.UserID,
 	}
-	
+
+	// Convert data to map if it's not already
+	if dataMap, ok := message.Data.(map[string]interface{}); ok {
+		wsMessage.Data = dataMap
+	} else {
+		wsMessage.Data["data"] = message.Data
+	}
+
 	// Try to deliver based on target
 	if message.SessionID != "" {
 		mq.hub.BroadcastToSession(message.SessionID, wsMessage)
@@ -191,7 +197,7 @@ func (mq *MessageQueue) deliverMessage(message QueueMessage) bool {
 	} else {
 		mq.hub.BroadcastMessage(wsMessage)
 	}
-	
+
 	log.Printf("Message %s delivered successfully", message.ID)
 	return true
 }
@@ -200,11 +206,11 @@ func (mq *MessageQueue) deliverMessage(message QueueMessage) bool {
 func (mq *MessageQueue) addToFailedMessages(message QueueMessage) {
 	mq.mu.Lock()
 	defer mq.mu.Unlock()
-	
+
 	message.Retries++
 	mq.failedMessages = append(mq.failedMessages, message)
-	
-	log.Printf("Message %s failed delivery, added to retry queue. Retries: %d/%d", 
+
+	log.Printf("Message %s failed delivery, added to retry queue. Retries: %d/%d",
 		message.ID, message.Retries, message.MaxRetries)
 }
 
@@ -212,26 +218,26 @@ func (mq *MessageQueue) addToFailedMessages(message QueueMessage) {
 func (mq *MessageQueue) processFailedMessages() {
 	mq.mu.Lock()
 	defer mq.mu.Unlock()
-	
+
 	var remainingFailed []QueueMessage
-	
+
 	for _, message := range mq.failedMessages {
 		if message.Retries >= message.MaxRetries {
 			log.Printf("Message %s exceeded max retries, dropping", message.ID)
 			continue
 		}
-		
+
 		// Check if enough time has passed since last retry
 		if time.Since(message.Timestamp) < mq.retryDelay {
 			remainingFailed = append(remainingFailed, message)
 			continue
 		}
-		
+
 		// Retry the message
 		message.Timestamp = time.Now()
 		mq.insertByPriority(message)
 	}
-	
+
 	mq.failedMessages = remainingFailed
 }
 
@@ -259,13 +265,13 @@ func (mq *MessageQueue) GetFailedMessagesCount() int {
 func (mq *MessageQueue) GetQueueStats() map[string]interface{} {
 	mq.mu.RLock()
 	defer mq.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"queue_size":         len(mq.queue),
-		"failed_messages":    len(mq.failedMessages),
-		"processing":         mq.processing,
-		"max_retries":        mq.maxRetries,
-		"retry_delay_ms":     mq.retryDelay.Milliseconds(),
+		"queue_size":      len(mq.queue),
+		"failed_messages": len(mq.failedMessages),
+		"processing":      mq.processing,
+		"max_retries":     mq.maxRetries,
+		"retry_delay_ms":  mq.retryDelay.Milliseconds(),
 	}
 }
 
@@ -331,7 +337,7 @@ type PersistentMessageQueue struct {
 // NewPersistentMessageQueue creates a new persistent message queue
 func NewPersistentMessageQueue(hub *Hub, persistence QueuePersistence, maxRetries int, retryDelay time.Duration) *PersistentMessageQueue {
 	baseQueue := NewMessageQueue(hub, maxRetries, retryDelay)
-	
+
 	return &PersistentMessageQueue{
 		MessageQueue: baseQueue,
 		persistence:  persistence,
@@ -344,7 +350,7 @@ func (pmq *PersistentMessageQueue) EnqueueWithPersistence(message QueueMessage) 
 	if err := pmq.persistence.SaveMessage(message); err != nil {
 		return fmt.Errorf("failed to persist message: %w", err)
 	}
-	
+
 	// Add to in-memory queue
 	return pmq.Enqueue(message)
 }
@@ -355,14 +361,14 @@ func (pmq *PersistentMessageQueue) LoadPersistedMessages() error {
 	if err != nil {
 		return fmt.Errorf("failed to load persisted messages: %w", err)
 	}
-	
+
 	pmq.mu.Lock()
 	defer pmq.mu.Unlock()
-	
+
 	for _, message := range messages {
 		pmq.insertByPriority(message)
 	}
-	
+
 	log.Printf("Loaded %d persisted messages", len(messages))
 	return nil
 }

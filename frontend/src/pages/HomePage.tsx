@@ -24,14 +24,20 @@ const HomePage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (featuredData?.data) {
+    if (featuredData?.data && Array.isArray(featuredData.data)) {
       setFeaturedProducts(featuredData.data);
+    } else if (featuredData?.error) {
+      console.error('Failed to fetch featured products:', featuredData.error);
+      setFeaturedProducts([]);
     }
   }, [featuredData]);
 
   useEffect(() => {
-    if (categoriesData?.data) {
+    if (categoriesData?.data && Array.isArray(categoriesData.data)) {
       setCategories(categoriesData.data.slice(0, 6)); // Show only first 6 categories
+    } else if (categoriesData?.error) {
+      console.error('Failed to fetch categories:', categoriesData.error);
+      setCategories([]);
     }
   }, [categoriesData]);
 
@@ -90,7 +96,7 @@ const HomePage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-              {categories.map((category) => (
+              {(categories || []).map((category) => (
                 <Link
                   key={category.id}
                   to={`/categories/${category.slug}`}
@@ -143,7 +149,7 @@ const HomePage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts.map((product) => (
+              {(featuredProducts || []).map((product) => (
                 <Link
                   key={product.id}
                   to={`/products/${product.id}`}
