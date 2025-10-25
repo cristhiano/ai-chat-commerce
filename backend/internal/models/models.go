@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
-	"gorm.io/gorm"
 )
 
 // Product represents a product in the catalog
@@ -18,9 +17,9 @@ type Product struct {
 	SKU         string         `gorm:"size:100;uniqueIndex;not null" json:"sku"`
 	Status      string         `gorm:"size:20;default:'active';index" json:"status"`
 	Metadata    datatypes.JSON `gorm:"type:jsonb" json:"metadata"`
-	Tags        []string       `gorm:"type:text[]" json:"tags"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	// Tags        pq.StringArray `gorm:"type:text[]" json:"tags"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	// Relationships
 	Category   Category         `gorm:"foreignKey:CategoryID" json:"category"`
@@ -78,17 +77,17 @@ type Category struct {
 
 // Inventory represents stock levels and warehouse information
 type Inventory struct {
-	ID                  uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	ProductID           uuid.UUID  `gorm:"type:uuid;not null;index" json:"product_id"`
-	VariantID           *uuid.UUID `gorm:"type:uuid;index" json:"variant_id"`
-	WarehouseLocation   string     `gorm:"size:50;not null" json:"warehouse_location"`
-	QuantityAvailable   int        `gorm:"not null;default:0" json:"quantity_available"`
-	QuantityReserved    int        `gorm:"not null;default:0" json:"quantity_reserved"`
-	LowStockThreshold   int        `gorm:"default:10" json:"low_stock_threshold"`
-	ReorderPoint        int        `gorm:"default:5" json:"reorder_point"`
-	LastRestocked       *time.Time `json:"last_restocked"`
-	CreatedAt           time.Time  `json:"created_at"`
-	UpdatedAt           time.Time  `json:"updated_at"`
+	ID                uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	ProductID         uuid.UUID  `gorm:"type:uuid;not null;index" json:"product_id"`
+	VariantID         *uuid.UUID `gorm:"type:uuid;index" json:"variant_id"`
+	WarehouseLocation string     `gorm:"size:50;not null" json:"warehouse_location"`
+	QuantityAvailable int        `gorm:"not null;default:0" json:"quantity_available"`
+	QuantityReserved  int        `gorm:"not null;default:0" json:"quantity_reserved"`
+	LowStockThreshold int        `gorm:"default:10" json:"low_stock_threshold"`
+	ReorderPoint      int        `gorm:"default:5" json:"reorder_point"`
+	LastRestocked     *time.Time `json:"last_restocked"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 
 	// Relationships
 	Product      Product                `gorm:"foreignKey:ProductID" json:"product"`
@@ -98,14 +97,14 @@ type Inventory struct {
 
 // InventoryReservation represents temporary inventory reservations
 type InventoryReservation struct {
-	ID              uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	InventoryID     uuid.UUID  `gorm:"type:uuid;not null;index" json:"inventory_id"`
-	SessionID       string     `gorm:"size:100;not null;index" json:"session_id"`
-	UserID          *uuid.UUID `gorm:"type:uuid;index" json:"user_id"`
-	QuantityReserved int       `gorm:"not null" json:"quantity_reserved"`
-	ExpiresAt       time.Time  `gorm:"not null;index" json:"expires_at"`
-	Status          string     `gorm:"size:20;default:'active';index" json:"status"`
-	CreatedAt       time.Time  `json:"created_at"`
+	ID               uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	InventoryID      uuid.UUID  `gorm:"type:uuid;not null;index" json:"inventory_id"`
+	SessionID        string     `gorm:"size:100;not null;index" json:"session_id"`
+	UserID           *uuid.UUID `gorm:"type:uuid;index" json:"user_id"`
+	QuantityReserved int        `gorm:"not null" json:"quantity_reserved"`
+	ExpiresAt        time.Time  `gorm:"not null;index" json:"expires_at"`
+	Status           string     `gorm:"size:20;default:'active';index" json:"status"`
+	CreatedAt        time.Time  `json:"created_at"`
 
 	// Relationships
 	Inventory Inventory `gorm:"foreignKey:InventoryID" json:"inventory"`
@@ -128,10 +127,10 @@ type User struct {
 	UpdatedAt     time.Time      `json:"updated_at"`
 
 	// Relationships
-	ChatSessions  []ChatSession           `gorm:"foreignKey:UserID" json:"chat_sessions"`
-	ShoppingCarts []ShoppingCart          `gorm:"foreignKey:UserID" json:"shopping_carts"`
-	Orders        []Order                 `gorm:"foreignKey:UserID" json:"orders"`
-	Reservations  []InventoryReservation  `gorm:"foreignKey:UserID" json:"reservations"`
+	ChatSessions  []ChatSession          `gorm:"foreignKey:UserID" json:"chat_sessions"`
+	ShoppingCarts []ShoppingCart         `gorm:"foreignKey:UserID" json:"shopping_carts"`
+	Orders        []Order                `gorm:"foreignKey:UserID" json:"orders"`
+	Reservations  []InventoryReservation `gorm:"foreignKey:UserID" json:"reservations"`
 }
 
 // ChatSession represents chat conversation sessions
@@ -207,8 +206,8 @@ type OrderItem struct {
 	CreatedAt       time.Time      `json:"created_at"`
 
 	// Relationships
-	Order   Order          `gorm:"foreignKey:OrderID" json:"order"`
-	Product Product        `gorm:"foreignKey:ProductID" json:"product"`
+	Order   Order           `gorm:"foreignKey:OrderID" json:"order"`
+	Product Product         `gorm:"foreignKey:ProductID" json:"product"`
 	Variant *ProductVariant `gorm:"foreignKey:VariantID" json:"variant"`
 }
 

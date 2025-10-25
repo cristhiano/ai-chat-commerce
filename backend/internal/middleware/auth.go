@@ -71,7 +71,7 @@ func OptionalAuthMiddleware() gin.HandlerFunc {
 // AdminMiddleware validates admin role
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := c.Get("user_id")
+		_, exists := c.Get("user_id")
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
 			c.Abort()
@@ -81,7 +81,7 @@ func AdminMiddleware() gin.HandlerFunc {
 		// TODO: Check if user has admin role
 		// For now, we'll implement a simple check
 		// In a real application, you'd check the user's role from the database
-		
+
 		c.Set("is_admin", true) // Placeholder
 		c.Next()
 	}

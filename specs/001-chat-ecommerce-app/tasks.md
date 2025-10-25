@@ -126,11 +126,11 @@ Users can browse product catalog, search and filter products, manage shopping ca
 ### Tasks
 
 #### Backend API Development
-- [ ] T027 [US1] Implement ProductService with CRUD operations in backend/internal/services/
-- [ ] T028 [US1] Create ProductHandler with REST endpoints in backend/internal/handlers/
-- [ ] T029 [US1] Implement CategoryService and CategoryHandler for product categorization
-- [ ] T030 [US1] Create ShoppingCartService for cart management in backend/internal/services/
-- [ ] T031 [US1] Implement CartHandler with cart API endpoints in backend/internal/handlers/
+- [x] T027 [US1] Implement ProductService with CRUD operations in backend/internal/services/
+- [x] T028 [US1] Create ProductHandler with REST endpoints in backend/internal/handlers/
+- [x] T029 [US1] Implement CategoryService and CategoryHandler for product categorization
+- [x] T030 [US1] Create ShoppingCartService for cart management in backend/internal/services/
+- [x] T031 [US1] Implement CartHandler with cart API endpoints in backend/internal/handlers/
 - [ ] T032 [US1] Create UserService for account management in backend/internal/services/
 - [ ] T033 [US1] Implement UserHandler with authentication endpoints in backend/internal/handlers/
 - [ ] T034 [US1] Create OrderService for checkout processing in backend/internal/services/

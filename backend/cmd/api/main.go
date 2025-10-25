@@ -1,7 +1,9 @@
 package main
 
 import (
+	"chat-ecommerce-backend/internal/handlers"
 	"chat-ecommerce-backend/internal/middleware"
+	"chat-ecommerce-backend/internal/services"
 	"chat-ecommerce-backend/pkg/database"
 	"log"
 	"os"
@@ -37,9 +39,21 @@ func main() {
 
 	// Configure CORS
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:5173"}
+	config.AllowOrigins = []string{"*"}
+	// config.AllowOriginFunc = func(origin string) bool {
+	// 	u, err := url.Parse(origin)
+	// 	if err != nil {
+	// 		return false
+	// 	}
+	// 	switch u.Hostname() {
+	// 	case "localhost", "127.0.0.1", "::1":
+	// 		return true // accepts any port for these hosts
+	// 	default:
+	// 		return false
+	// 	}
+	// }
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Session-ID"}
 	config.AllowCredentials = true
 	r.Use(cors.New(config))
 
@@ -51,6 +65,12 @@ func main() {
 		})
 	})
 
+	// Initialize services and handlers
+	productService := services.NewProductService(db)
+	productHandler := handlers.NewProductHandler(productService)
+	cartService := services.NewShoppingCartService(db)
+	cartHandler := handlers.NewCartHandler(cartService)
+
 	// API v1 routes
 	v1 := r.Group("/api/v1")
 	{
@@ -60,16 +80,20 @@ func main() {
 			// Product routes (public)
 			products := public.Group("products")
 			{
-				products.GET("/", getProducts)
-				products.GET("/:id", getProduct)
-				products.GET("/search", searchProducts)
+				products.GET("/", productHandler.GetProducts)
+				products.GET("/:id", productHandler.GetProductByID)
+				products.GET("/sku/:sku", productHandler.GetProductBySKU)
+				products.GET("/search", productHandler.SearchProducts)
+				products.GET("/featured", productHandler.GetFeaturedProducts)
+				products.GET("/:id/related", productHandler.GetRelatedProducts)
 			}
 
 			// Category routes (public)
 			categories := public.Group("categories")
 			{
-				categories.GET("/", getCategories)
-				categories.GET("/:id", getCategory)
+				categories.GET("/", productHandler.GetCategories)
+				categories.GET("/:id", productHandler.GetCategoryByID)
+				categories.GET("/slug/:slug", productHandler.GetCategoryBySlug)
 			}
 
 			// Auth routes (public)
@@ -96,11 +120,13 @@ func main() {
 			// Cart routes
 			cart := protected.Group("cart")
 			{
-				cart.GET("/", getCart)
-				cart.POST("/add", addToCart)
-				cart.PUT("/update", updateCartItem)
-				cart.DELETE("/remove/:id", removeFromCart)
-				cart.DELETE("/clear", clearCart)
+				cart.GET("/", cartHandler.GetCart)
+				cart.POST("/add", cartHandler.AddToCart)
+				cart.PUT("/update", cartHandler.UpdateCartItem)
+				cart.DELETE("/remove/:product_id", cartHandler.RemoveFromCart)
+				cart.DELETE("/clear", cartHandler.ClearCart)
+				cart.POST("/calculate", cartHandler.CalculateTotals)
+				cart.GET("/count", cartHandler.GetCartItemCount)
 			}
 
 			// Order routes
@@ -119,9 +145,9 @@ func main() {
 			// Admin product management
 			adminProducts := admin.Group("products")
 			{
-				adminProducts.POST("/", createProduct)
-				adminProducts.PUT("/:id", updateProduct)
-				adminProducts.DELETE("/:id", deleteProduct)
+				adminProducts.POST("/", productHandler.CreateProduct)
+				adminProducts.PUT("/:id", productHandler.UpdateProduct)
+				adminProducts.DELETE("/:id", productHandler.DeleteProduct)
 			}
 
 			// Admin inventory management

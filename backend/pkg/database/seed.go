@@ -39,10 +39,10 @@ func MigrateDatabase(db *gorm.DB) error {
 func SeedDatabase(db *gorm.DB) error {
 	log.Println("Seeding database...")
 
-	// Check if data already exists
-	var count int64
-	db.Model(&models.Category{}).Count(&count)
-	if count > 0 {
+	// Check if products already exist
+	var productCount int64
+	db.Model(&models.Product{}).Count(&productCount)
+	if productCount > 0 {
 		log.Println("Database already seeded, skipping...")
 		return nil
 	}
@@ -103,9 +103,9 @@ func SeedDatabase(db *gorm.DB) error {
 			CategoryID:  categories[0].ID,
 			SKU:         "WBH-001",
 			Status:      "active",
-			Tags:        []string{"wireless", "bluetooth", "headphones", "audio"},
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
+			// Tags:        pq.StringArray{"wireless", "bluetooth", "headphones", "audio"},
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		},
 		{
 			ID:          uuid.New(),
@@ -115,9 +115,9 @@ func SeedDatabase(db *gorm.DB) error {
 			CategoryID:  categories[1].ID,
 			SKU:         "CTS-001",
 			Status:      "active",
-			Tags:        []string{"cotton", "t-shirt", "clothing", "casual"},
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
+			// Tags:        pq.StringArray{"cotton", "t-shirt", "clothing", "casual"},
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		},
 		{
 			ID:          uuid.New(),
@@ -127,9 +127,9 @@ func SeedDatabase(db *gorm.DB) error {
 			CategoryID:  categories[2].ID,
 			SKU:         "PB-001",
 			Status:      "active",
-			Tags:        []string{"programming", "book", "education", "technology"},
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
+			// Tags:        pq.StringArray{"programming", "book", "education", "technology"},
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		},
 		{
 			ID:          uuid.New(),
@@ -139,9 +139,9 @@ func SeedDatabase(db *gorm.DB) error {
 			CategoryID:  categories[3].ID,
 			SKU:         "GTS-001",
 			Status:      "active",
-			Tags:        []string{"garden", "tools", "outdoor", "gardening"},
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
+			// Tags:        pq.StringArray{"garden", "tools", "outdoor", "gardening"},
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		},
 	}
 
@@ -154,54 +154,54 @@ func SeedDatabase(db *gorm.DB) error {
 	// Create product variants
 	variants := []models.ProductVariant{
 		{
-			ID:           uuid.New(),
-			ProductID:    products[0].ID,
-			VariantName:  "Color",
-			VariantValue: "Black",
+			ID:            uuid.New(),
+			ProductID:     products[0].ID,
+			VariantName:   "Color",
+			VariantValue:  "Black",
 			PriceModifier: 0,
-			SKUSuffix:    "BLK",
-			IsDefault:    true,
-			CreatedAt:    time.Now(),
+			SKUSuffix:     "BLK",
+			IsDefault:     true,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:           uuid.New(),
-			ProductID:    products[0].ID,
-			VariantName:  "Color",
-			VariantValue: "White",
+			ID:            uuid.New(),
+			ProductID:     products[0].ID,
+			VariantName:   "Color",
+			VariantValue:  "White",
 			PriceModifier: 0,
-			SKUSuffix:    "WHT",
-			IsDefault:    false,
-			CreatedAt:    time.Now(),
+			SKUSuffix:     "WHT",
+			IsDefault:     false,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:           uuid.New(),
-			ProductID:    products[1].ID,
-			VariantName:  "Size",
-			VariantValue: "Small",
+			ID:            uuid.New(),
+			ProductID:     products[1].ID,
+			VariantName:   "Size",
+			VariantValue:  "Small",
 			PriceModifier: 0,
-			SKUSuffix:    "S",
-			IsDefault:    false,
-			CreatedAt:    time.Now(),
+			SKUSuffix:     "S",
+			IsDefault:     false,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:           uuid.New(),
-			ProductID:    products[1].ID,
-			VariantName:  "Size",
-			VariantValue: "Medium",
+			ID:            uuid.New(),
+			ProductID:     products[1].ID,
+			VariantName:   "Size",
+			VariantValue:  "Medium",
 			PriceModifier: 0,
-			SKUSuffix:    "M",
-			IsDefault:    true,
-			CreatedAt:    time.Now(),
+			SKUSuffix:     "M",
+			IsDefault:     true,
+			CreatedAt:     time.Now(),
 		},
 		{
-			ID:           uuid.New(),
-			ProductID:    products[1].ID,
-			VariantName:  "Size",
-			VariantValue: "Large",
+			ID:            uuid.New(),
+			ProductID:     products[1].ID,
+			VariantName:   "Size",
+			VariantValue:  "Large",
 			PriceModifier: 0,
-			SKUSuffix:    "L",
-			IsDefault:    false,
-			CreatedAt:    time.Now(),
+			SKUSuffix:     "L",
+			IsDefault:     false,
+			CreatedAt:     time.Now(),
 		},
 	}
 
