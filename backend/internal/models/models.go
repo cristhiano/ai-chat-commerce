@@ -148,7 +148,23 @@ type ChatSession struct {
 	ExpiresAt           time.Time      `gorm:"index" json:"expires_at"`
 
 	// Relationships
-	User User `gorm:"foreignKey:UserID" json:"user"`
+	User     User          `gorm:"foreignKey:UserID" json:"user"`
+	Messages []ChatMessage `gorm:"foreignKey:SessionID;references:SessionID" json:"messages"`
+}
+
+// ChatMessage represents a message in a chat conversation
+type ChatMessage struct {
+	ID        uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	SessionID string         `gorm:"size:100;not null;index" json:"session_id"`
+	UserID    *uuid.UUID     `gorm:"type:uuid;index" json:"user_id"`
+	Role      string         `gorm:"size:20;not null" json:"role"` // "user", "assistant", "system"
+	Content   string         `gorm:"type:text;not null" json:"content"`
+	Metadata  datatypes.JSON `gorm:"type:jsonb" json:"metadata"`
+	CreatedAt time.Time      `json:"created_at"`
+
+	// Relationships
+	User    User        `gorm:"foreignKey:UserID" json:"user"`
+	Session ChatSession `gorm:"foreignKey:SessionID;references:SessionID" json:"session"`
 }
 
 // ShoppingCart represents unified cart state
@@ -242,6 +258,10 @@ func (User) TableName() string {
 
 func (ChatSession) TableName() string {
 	return "chat_sessions"
+}
+
+func (ChatMessage) TableName() string {
+	return "chat_messages"
 }
 
 func (ShoppingCart) TableName() string {

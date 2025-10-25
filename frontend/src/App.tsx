@@ -17,6 +17,7 @@ import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
+import ChatPage from './pages/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Context providers
@@ -59,6 +60,13 @@ function App() {
                     {/* Auth routes */}
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
+                    
+                    {/* Chat route */}
+                    <Route path="/chat" element={
+                      <Layout>
+                        <ChatPage />
+                      </Layout>
+                    } />
                     
                     {/* Protected routes */}
                     <Route path="/cart" element={

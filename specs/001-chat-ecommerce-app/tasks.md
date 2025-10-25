@@ -179,37 +179,37 @@ Users can shop entirely through conversational chat interface using OpenAI GPT-4
 ### Tasks
 
 #### Backend Chat Development
-- [ ] T058 [US2] Implement OpenAI GPT-4 client integration in backend/internal/services/
-- [ ] T059 [US2] Create ChatService for conversation management in backend/internal/services/
-- [ ] T060 [US2] Implement ChatHandler with WebSocket endpoints in backend/internal/handlers/
-- [ ] T061 [US2] Create conversation context management system
-- [ ] T062 [US2] Implement natural language to structured action parsing
-- [ ] T063 [US2] Create chat session persistence and retrieval
-- [ ] T064 [US2] Implement product recommendation logic for chat
-- [ ] T065 [US2] Add chat-based cart operations integration
-- [ ] T066 [US2] Create chat checkout flow integration
-- [ ] T067 [US2] Implement chat error handling and fallback strategies
-- [ ] T068 [US2] Add conversation history and context restoration
+- [x] T058 [US2] Implement OpenAI GPT-4 client integration in backend/internal/services/
+- [x] T059 [US2] Create ChatService for conversation management in backend/internal/services/
+- [x] T060 [US2] Implement ChatHandler with WebSocket endpoints in backend/internal/handlers/
+- [x] T061 [US2] Create conversation context management system
+- [x] T062 [US2] Implement natural language to structured action parsing
+- [x] T063 [US2] Create chat session persistence and retrieval
+- [x] T064 [US2] Implement product recommendation logic for chat
+- [x] T065 [US2] Add chat-based cart operations integration
+- [x] T066 [US2] Create chat checkout flow integration
+- [x] T067 [US2] Implement chat error handling and fallback strategies
+- [x] T068 [US2] Add conversation history and context restoration
 
 #### Frontend Chat Development
-- [ ] T069 [P] [US2] Create ChatInterface component with message display in frontend/src/components/chat/
-- [ ] T070 [P] [US2] Implement ChatInput component with message sending in frontend/src/components/chat/
-- [ ] T071 [P] [US2] Create ChatMessage component for message rendering in frontend/src/components/chat/
-- [ ] T072 [P] [US2] Implement WebSocket client integration in frontend/src/services/
-- [ ] T073 [P] [US2] Create chat session management in frontend/src/hooks/
-- [ ] T074 [P] [US2] Implement chat-based product suggestions display
-- [ ] T075 [P] [US2] Create chat cart integration with traditional cart
-- [ ] T076 [P] [US2] Add chat checkout flow components
-- [ ] T077 [P] [US2] Implement typing indicators and message status
-- [ ] T078 [P] [US2] Create chat session persistence and restoration
-- [ ] T079 [P] [US2] Add chat error handling and retry mechanisms
+- [x] T069 [P] [US2] Create ChatInterface component with message display in frontend/src/components/chat/
+- [x] T070 [P] [US2] Implement ChatInput component with message sending in frontend/src/components/chat/
+- [x] T071 [P] [US2] Create ChatMessage component for message rendering in frontend/src/components/chat/
+- [x] T072 [P] [US2] Implement WebSocket client integration in frontend/src/services/
+- [x] T073 [P] [US2] Create chat session management in frontend/src/hooks/
+- [x] T074 [P] [US2] Implement chat-based product suggestions display
+- [x] T075 [P] [US2] Create chat cart integration with traditional cart
+- [x] T076 [P] [US2] Add chat checkout flow components
+- [x] T077 [P] [US2] Implement typing indicators and message status
+- [x] T078 [P] [US2] Create chat session persistence and restoration
+- [x] T079 [P] [US2] Add chat error handling and retry mechanisms
 
 #### Testing
-- [ ] T080 [US2] Write unit tests for ChatService and OpenAI integration
-- [ ] T081 [US2] Create integration tests for chat WebSocket communication
-- [ ] T082 [US2] Implement chat conversation flow tests
-- [ ] T083 [US2] Write React component tests for chat interface
-- [ ] T084 [US2] Create end-to-end tests for chat shopping journey
+- [x] T080 [US2] Write unit tests for ChatService and OpenAI integration
+- [x] T081 [US2] Create integration tests for chat WebSocket communication
+- [x] T082 [US2] Implement chat conversation flow tests
+- [x] T083 [US2] Write React component tests for chat interface
+- [x] T084 [US2] Create end-to-end tests for chat shopping journey
 
 ---
 

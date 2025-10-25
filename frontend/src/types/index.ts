@@ -269,6 +269,44 @@ export interface ModalProps {
   children: React.ReactNode;
 }
 
+// Chat types
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  userId?: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  metadata?: Record<string, any>;
+  timestamp: string;
+}
+
+export interface ChatSession {
+  id: string;
+  userId?: string;
+  context: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatAction {
+  type: string;
+  payload: Record<string, any>;
+}
+
+export interface ProductSuggestion {
+  product: Product;
+  reason: string;
+  confidence: number;
+}
+
+export interface ChatResponse {
+  message: string;
+  actions?: ChatAction[];
+  suggestions?: ProductSuggestion[];
+  context?: Record<string, any>;
+  error?: string;
+}
+
 export interface NotificationProps {
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;

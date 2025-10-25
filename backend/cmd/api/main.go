@@ -76,6 +76,8 @@ func main() {
 	orderHandler := handlers.NewOrderHandler(orderService)
 	paymentService := services.NewPaymentService()
 	paymentHandler := handlers.NewPaymentHandler(paymentService, orderService)
+	chatService := services.NewChatService(db, productService, cartService)
+	chatHandler := handlers.NewChatHandler(chatService)
 
 	// API v1 routes
 	v1 := r.Group("/api/v1")
@@ -108,6 +110,17 @@ func main() {
 				auth.POST("/register", userHandler.Register)
 				auth.POST("/login", userHandler.Login)
 				auth.POST("/refresh", userHandler.RefreshToken)
+			}
+
+			// Chat routes (public)
+			chat := public.Group("chat")
+			{
+				chat.GET("/ws", chatHandler.HandleWebSocket)
+				chat.POST("/message", chatHandler.SendMessage)
+				chat.GET("/history/:session_id", chatHandler.GetChatHistory)
+				chat.GET("/suggestions", chatHandler.GetProductSuggestions)
+				chat.GET("/search", chatHandler.SearchProducts)
+				chat.GET("/session/:session_id", chatHandler.GetChatSession)
 			}
 
 			// Payment webhook (public)
