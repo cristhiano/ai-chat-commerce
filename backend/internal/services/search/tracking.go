@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"chat-ecommerce-backend/internal/models/search"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -80,7 +82,7 @@ func (ts *TrackingService) GetUserSearchBehavior(ctx context.Context, userID uui
 	// Get total searches
 	var totalSearches int64
 	err := ts.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("user_id = ? AND created_at > ?", userID, since).
 		Count(&totalSearches).Error
 	if err != nil {
@@ -148,7 +150,7 @@ func (ts *TrackingService) GetSearchInsights(ctx context.Context, timeRange time
 	var searchesWithClicks int64
 
 	err := ts.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ?", since).
 		Count(&totalSearches).Error
 	if err != nil {

@@ -2,12 +2,10 @@ package search
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -33,10 +31,7 @@ func (hs *HistoryService) SaveSearchHistory(ctx context.Context, sessionID strin
 
 	// Add filters if provided
 	if len(filters) > 0 {
-		filterJSON, err := json.Marshal(filters)
-		if err == nil {
-			history.Filters = datatypes.JSON(filterJSON)
-		}
+		history.Filters = filters
 	}
 
 	return hs.db.WithContext(ctx).Create(&history).Error

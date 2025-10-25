@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"chat-ecommerce-backend/internal/models/search"
+
 	"github.com/redis/go-redis/v9"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -134,7 +136,7 @@ func (rcs *RedisCacheService) WarmCache(ctx context.Context, popularQueries []st
 }
 
 // GetCacheStats returns cache statistics
-func (rcs *RedisCacheService) GetCacheStats(ctx context.Context) (*CacheStats, error) {
+func (rcs *RedisCacheService) GetCacheStats(ctx context.Context) (*RedisCacheStats, error) {
 	// Get Redis info
 	info, err := rcs.redisClient.Info(ctx, "memory").Result()
 	if err != nil {
@@ -151,17 +153,17 @@ func (rcs *RedisCacheService) GetCacheStats(ctx context.Context) (*CacheStats, e
 	var totalCount int64
 	var expiredCount int64
 
-	err = rcs.db.WithContext(ctx).Model(&SearchCache{}).Count(&totalCount).Error
+	err = rcs.db.WithContext(ctx).Model(&search.SearchCache{}).Count(&totalCount).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count database cache entries: %w", err)
 	}
 
-	err = rcs.db.WithContext(ctx).Model(&SearchCache{}).Where("expires_at < ?", time.Now()).Count(&expiredCount).Error
+	err = rcs.db.WithContext(ctx).Model(&search.SearchCache{}).Where("expires_at < ?", time.Now()).Count(&expiredCount).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count expired cache entries: %w", err)
 	}
 
-	return &CacheStats{
+	return &RedisCacheStats{
 		RedisKeys:       len(keys),
 		TotalEntries:    int(totalCount),
 		ExpiredEntries:  int(expiredCount),
@@ -173,7 +175,7 @@ func (rcs *RedisCacheService) GetCacheStats(ctx context.Context) (*CacheStats, e
 // CleanupExpiredCache removes expired cache entries
 func (rcs *RedisCacheService) CleanupExpiredCache(ctx context.Context) error {
 	// Clean up database cache
-	err := rcs.db.WithContext(ctx).Where("expires_at < ?", time.Now()).Delete(&SearchCache{}).Error
+	err := rcs.db.WithContext(ctx).Where("expires_at < ?", time.Now()).Delete(&search.SearchCache{}).Error
 	if err != nil {
 		return fmt.Errorf("failed to cleanup database cache: %w", err)
 	}
@@ -198,7 +200,7 @@ func (rcs *RedisCacheService) createCacheKey(query string, filters map[string]in
 // storeCacheMetadata stores cache metadata in database
 func (rcs *RedisCacheService) storeCacheMetadata(ctx context.Context, query string, filters map[string]interface{}, resultCount int, ttl time.Duration) {
 	filterJSON, _ := json.Marshal(filters)
-	cache := SearchCache{
+	cache := search.SearchCache{
 		Query:       query,
 		Filters:     datatypes.JSON(filterJSON),
 		ResultCount: resultCount,
@@ -215,8 +217,8 @@ func (rcs *RedisCacheService) updateCacheHitMetrics(ctx context.Context, query s
 	fmt.Printf("Cache hit for query: %s\n", query)
 }
 
-// CacheStats represents cache statistics
-type CacheStats struct {
+// RedisCacheStats represents Redis-specific cache statistics
+type RedisCacheStats struct {
 	RedisKeys       int    `json:"redis_keys"`
 	TotalEntries    int    `json:"total_entries"`
 	ExpiredEntries  int    `json:"expired_entries"`

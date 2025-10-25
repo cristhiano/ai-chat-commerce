@@ -170,7 +170,7 @@ func (ts *TimeoutService) MonitorQueryPerformance(ctx context.Context, operation
 	}
 
 	// Check if query was close to timeout
-	if duration > timeout*0.8 {
+	if duration > timeout*4/5 {
 		fmt.Printf("Warning: Operation %s took %v (80%% of timeout %v)\n", operation, duration, timeout)
 	}
 

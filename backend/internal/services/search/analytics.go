@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"chat-ecommerce-backend/internal/models/search"
+
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -23,7 +25,7 @@ func NewAnalyticsService(db *gorm.DB) *AnalyticsService {
 
 // LogSearchQuery logs a search query for analytics
 func (as *AnalyticsService) LogSearchQuery(ctx context.Context, query string, filters map[string]interface{}, resultCount int, responseTime int, sessionID string, userID *uuid.UUID) error {
-	analytics := SearchAnalytics{
+	analytics := search.SearchAnalytics{
 		Query:        query,
 		ResultCount:  resultCount,
 		ResponseTime: responseTime,
@@ -59,7 +61,7 @@ func (as *AnalyticsService) LogSearchClick(ctx context.Context, query string, pr
 
 // LogNoResultsQuery logs queries that return no results
 func (as *AnalyticsService) LogNoResultsQuery(ctx context.Context, query string, sessionID string, userID *uuid.UUID) error {
-	analytics := SearchAnalytics{
+	analytics := search.SearchAnalytics{
 		Query:        query,
 		ResultCount:  0,
 		ResponseTime: 0,
@@ -82,7 +84,7 @@ func (as *AnalyticsService) GetSearchStats(ctx context.Context, timeRange time.D
 
 	// Count total queries
 	err := as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ?", since).
 		Count(&totalQueries).Error
 	if err != nil {
@@ -91,7 +93,7 @@ func (as *AnalyticsService) GetSearchStats(ctx context.Context, timeRange time.D
 
 	// Sum total results
 	err = as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ?", since).
 		Select("SUM(result_count)").
 		Scan(&totalResults).Error
@@ -101,7 +103,7 @@ func (as *AnalyticsService) GetSearchStats(ctx context.Context, timeRange time.D
 
 	// Count no results queries
 	err = as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ? AND result_count = 0", since).
 		Count(&noResultsQueries).Error
 	if err != nil {
@@ -110,7 +112,7 @@ func (as *AnalyticsService) GetSearchStats(ctx context.Context, timeRange time.D
 
 	// Calculate average response time
 	err = as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ? AND response_time > 0", since).
 		Select("AVG(response_time)").
 		Scan(&avgResponseTime).Error
@@ -183,7 +185,7 @@ func (as *AnalyticsService) GetSearchPerformance(ctx context.Context, timeRange 
 	var p50, p90, p95, p99 float64
 
 	err := as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ? AND response_time > 0", since).
 		Select("PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY response_time)").
 		Scan(&p50).Error
@@ -192,7 +194,7 @@ func (as *AnalyticsService) GetSearchPerformance(ctx context.Context, timeRange 
 	}
 
 	err = as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ? AND response_time > 0", since).
 		Select("PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY response_time)").
 		Scan(&p90).Error
@@ -201,7 +203,7 @@ func (as *AnalyticsService) GetSearchPerformance(ctx context.Context, timeRange 
 	}
 
 	err = as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ? AND response_time > 0", since).
 		Select("PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY response_time)").
 		Scan(&p95).Error
@@ -210,7 +212,7 @@ func (as *AnalyticsService) GetSearchPerformance(ctx context.Context, timeRange 
 	}
 
 	err = as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ? AND response_time > 0", since).
 		Select("PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY response_time)").
 		Scan(&p99).Error
@@ -230,7 +232,7 @@ func (as *AnalyticsService) GetSearchPerformance(ctx context.Context, timeRange 
 	var totalQueries int64
 
 	err = as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ?", since).
 		Count(&totalQueries).Error
 	if err != nil {
@@ -238,7 +240,7 @@ func (as *AnalyticsService) GetSearchPerformance(ctx context.Context, timeRange 
 	}
 
 	err = as.db.WithContext(ctx).
-		Model(&SearchAnalytics{}).
+		Model(&search.SearchAnalytics{}).
 		Where("created_at > ? AND cache_hit = true", since).
 		Count(&cacheHits).Error
 	if err != nil {

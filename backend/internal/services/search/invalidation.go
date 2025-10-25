@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"chat-ecommerce-backend/internal/models/search"
+
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -26,7 +28,7 @@ func NewCacheInvalidationService(redisClient *redis.Client, db *gorm.DB) *CacheI
 // InvalidateProductCache invalidates cache when product data changes
 func (cis *CacheInvalidationService) InvalidateProductCache(ctx context.Context, productID string) error {
 	// Get all search cache entries that might contain this product
-	var cacheEntries []SearchCache
+	var cacheEntries []search.SearchCache
 	err := cis.db.WithContext(ctx).
 		Where("results::text LIKE ?", "%"+productID+"%").
 		Find(&cacheEntries).Error
@@ -48,7 +50,7 @@ func (cis *CacheInvalidationService) InvalidateProductCache(ctx context.Context,
 	// Delete database cache entries
 	err = cis.db.WithContext(ctx).
 		Where("results::text LIKE ?", "%"+productID+"%").
-		Delete(&SearchCache{}).Error
+		Delete(&search.SearchCache{}).Error
 
 	if err != nil {
 		return fmt.Errorf("failed to delete database cache entries: %w", err)
@@ -60,7 +62,7 @@ func (cis *CacheInvalidationService) InvalidateProductCache(ctx context.Context,
 // InvalidateCategoryCache invalidates cache when category data changes
 func (cis *CacheInvalidationService) InvalidateCategoryCache(ctx context.Context, categoryID string) error {
 	// Get all search cache entries that might contain this category
-	var cacheEntries []SearchCache
+	var cacheEntries []search.SearchCache
 	err := cis.db.WithContext(ctx).
 		Where("filters::text LIKE ?", "%"+categoryID+"%").
 		Find(&cacheEntries).Error
@@ -81,7 +83,7 @@ func (cis *CacheInvalidationService) InvalidateCategoryCache(ctx context.Context
 	// Delete database cache entries
 	err = cis.db.WithContext(ctx).
 		Where("filters::text LIKE ?", "%"+categoryID+"%").
-		Delete(&SearchCache{}).Error
+		Delete(&search.SearchCache{}).Error
 
 	if err != nil {
 		return fmt.Errorf("failed to delete database cache entries: %w", err)
@@ -93,7 +95,7 @@ func (cis *CacheInvalidationService) InvalidateCategoryCache(ctx context.Context
 // InvalidateQueryCache invalidates cache for specific query patterns
 func (cis *CacheInvalidationService) InvalidateQueryCache(ctx context.Context, queryPattern string) error {
 	// Find cache entries matching the pattern
-	var cacheEntries []SearchCache
+	var cacheEntries []search.SearchCache
 	err := cis.db.WithContext(ctx).
 		Where("query ILIKE ?", "%"+queryPattern+"%").
 		Find(&cacheEntries).Error
@@ -114,7 +116,7 @@ func (cis *CacheInvalidationService) InvalidateQueryCache(ctx context.Context, q
 	// Delete database cache entries
 	err = cis.db.WithContext(ctx).
 		Where("query ILIKE ?", "%"+queryPattern+"%").
-		Delete(&SearchCache{}).Error
+		Delete(&search.SearchCache{}).Error
 
 	if err != nil {
 		return fmt.Errorf("failed to delete database cache entries: %w", err)
@@ -126,7 +128,7 @@ func (cis *CacheInvalidationService) InvalidateQueryCache(ctx context.Context, q
 // InvalidateExpiredCache removes expired cache entries
 func (cis *CacheInvalidationService) InvalidateExpiredCache(ctx context.Context) error {
 	// Get expired cache entries
-	var expiredEntries []SearchCache
+	var expiredEntries []search.SearchCache
 	err := cis.db.WithContext(ctx).
 		Where("expires_at < ?", time.Now()).
 		Find(&expiredEntries).Error
@@ -144,7 +146,7 @@ func (cis *CacheInvalidationService) InvalidateExpiredCache(ctx context.Context)
 	// Delete from database
 	err = cis.db.WithContext(ctx).
 		Where("expires_at < ?", time.Now()).
-		Delete(&SearchCache{}).Error
+		Delete(&search.SearchCache{}).Error
 
 	if err != nil {
 		return fmt.Errorf("failed to delete expired cache entries: %w", err)
@@ -169,7 +171,7 @@ func (cis *CacheInvalidationService) InvalidateAllCache(ctx context.Context) err
 	}
 
 	// Clear database cache
-	err = cis.db.WithContext(ctx).Delete(&SearchCache{}).Error
+	err = cis.db.WithContext(ctx).Delete(&search.SearchCache{}).Error
 	if err != nil {
 		return fmt.Errorf("failed to clear database cache: %w", err)
 	}
@@ -204,19 +206,19 @@ func (cis *CacheInvalidationService) GetInvalidationStats(ctx context.Context) (
 	var recentInvalidations int64
 
 	// Count total entries
-	err := cis.db.WithContext(ctx).Model(&SearchCache{}).Count(&totalEntries).Error
+	err := cis.db.WithContext(ctx).Model(&search.SearchCache{}).Count(&totalEntries).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count total entries: %w", err)
 	}
 
 	// Count expired entries
-	err = cis.db.WithContext(ctx).Model(&SearchCache{}).Where("expires_at < ?", time.Now()).Count(&expiredEntries).Error
+	err = cis.db.WithContext(ctx).Model(&search.SearchCache{}).Where("expires_at < ?", time.Now()).Count(&expiredEntries).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to count expired entries: %w", err)
 	}
 
 	// Count recent invalidations (entries deleted in last hour)
-	err = cis.db.WithContext(ctx).Model(&SearchCache{}).
+	err = cis.db.WithContext(ctx).Model(&search.SearchCache{}).
 		Where("updated_at > ? AND deleted_at IS NOT NULL", time.Now().Add(-time.Hour)).
 		Count(&recentInvalidations).Error
 	if err != nil {
