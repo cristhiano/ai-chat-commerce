@@ -94,20 +94,20 @@ Implement core infrastructure components that are prerequisites for all user sto
 
 ### Tasks
 
-- [ ] T013 [P] Create database connection and GORM configuration in backend/pkg/database/
-- [ ] T014 [P] Implement all GORM models in backend/internal/models/
-- [ ] T015 [P] Create database migrations and seed data scripts
-- [ ] T016 [P] Implement JWT authentication middleware in backend/internal/middleware/
-- [ ] T017 [P] Create password hashing utilities in backend/pkg/auth/
-- [ ] T018 [P] Implement basic Gin router setup in backend/cmd/api/
-- [ ] T019 [P] Create error handling and response utilities in backend/pkg/
-- [ ] T020 [P] Implement logging configuration with structured logs
-- [ ] T021 [P] Create database connection pooling configuration
-- [ ] T022 [P] Set up Redis client and session management
-- [ ] T023 [P] Implement CORS middleware for frontend integration
-- [ ] T024 [P] Create health check endpoint for monitoring
-- [ ] T025 [P] Implement basic input validation utilities
-- [ ] T026 [P] Set up WebSocket hub structure for real-time communication
+- [x] T013 [P] Create database connection and GORM configuration in backend/pkg/database/
+- [x] T014 [P] Implement all GORM models in backend/internal/models/
+- [x] T015 [P] Create database migrations and seed data scripts
+- [x] T016 [P] Implement JWT authentication middleware in backend/internal/middleware/
+- [x] T017 [P] Create password hashing utilities in backend/pkg/auth/
+- [x] T018 [P] Implement basic Gin router setup in backend/cmd/api/
+- [x] T019 [P] Create error handling and response utilities in backend/pkg/
+- [x] T020 [P] Implement logging configuration with structured logs
+- [x] T021 [P] Create database connection pooling configuration
+- [x] T022 [P] Set up Redis client and session management
+- [x] T023 [P] Implement CORS middleware for frontend integration
+- [x] T024 [P] Create health check endpoint for monitoring
+- [x] T025 [P] Implement basic input validation utilities
+- [x] T026 [P] Set up WebSocket hub structure for real-time communication
 
 ---
 
