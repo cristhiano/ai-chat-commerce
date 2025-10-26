@@ -15,6 +15,7 @@ A modern ecommerce platform that enables users to shop entirely through conversa
 
 ### Backend
 - **Golang** with Gin framework
+- **Air** for live reloading in development
 - **PostgreSQL** database with GORM ORM
 - **Redis** for caching and sessions
 - **OpenAI GPT-4** for natural language processing
@@ -63,11 +64,36 @@ A modern ecommerce platform that enables users to shop entirely through conversa
    ```
 
 4. **Set up the backend**
+   
+   Option A: Using Air for live reloading (Recommended)
+   ```bash
+   cd backend
+   go mod download
+   
+   # Install Air if not already installed
+   go install github.com/air-verse/air@latest
+   
+   # Run with Air (enables live reloading)
+   air
+   ```
+   
+   Option B: Using standard Go run
    ```bash
    cd backend
    go mod download
    go run cmd/api/main.go
    ```
+   
+   Option C: Using Docker Compose with Air (with live reloading)
+   ```bash
+   # Start all services with live reloading
+   docker-compose -f docker-compose.dev.yml up
+   
+   # OR start in background
+   docker-compose -f docker-compose.dev.yml up -d
+   ```
+
+   **How it works:** Docker volumes mount your local `./backend` directory into `/app` in the container. When you edit files on your host, Docker reflects the changes in the container, and Air detects them and rebuilds. Polling is enabled for cross-platform compatibility.
 
 5. **Set up the frontend**
    ```bash
@@ -80,6 +106,34 @@ A modern ecommerce platform that enables users to shop entirely through conversa
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:8080
    - API Documentation: http://localhost:8080/docs
+
+#### Using Air for Live Reloading
+
+[Air](https://github.com/air-verse/air) is configured for the backend to provide automatic code reloading during development.
+
+**Features:**
+- ✅ Automatic rebuild on file changes
+- ✅ No need to manually restart the server
+- ✅ Faster development workflow
+- ✅ Colorful log output for better debugging
+
+**Usage:**
+```bash
+cd backend
+air
+```
+
+Air configuration is in `backend/.air.toml`. You can customize it to:
+- Add/remove files/directories to watch
+- Change build commands
+- Adjust delay times
+- Configure logging behavior
+
+To run Air with custom arguments:
+```bash
+cd backend
+air -c .air.toml -- -custom-arg
+```
 
 ### Production Deployment
 

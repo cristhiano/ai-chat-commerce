@@ -30,7 +30,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-    container_name: chat-ecommerce-backend
+    container_name: chat-ecommerce-backend-dev
     env_file:
       - .env
     environment:
@@ -39,6 +39,14 @@ services:
       REDIS_HOST: redis
       CORS_ORIGIN: http://localhost:3000
       PORT: 8080
+      ENVIRONMENT: development
+    volumes:
+      # Mount source code for live reloading
+      - ./backend:/app
+      # Exclude tmp directory to avoid conflicts
+      - /app/tmp
+      # Exclude go modules to speed up docker and reuse cache
+      - go-mod-cache:/go/pkg/mod
     ports:
       - "8080:8080"
     depends_on:
@@ -47,19 +55,8 @@ services:
     networks:
       - chat-ecommerce-network
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: chat-ecommerce-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    networks:
-      - chat-ecommerce-network
-
 volumes:
+  go-mod-cache:
   postgres_data:
   redis_data:
 

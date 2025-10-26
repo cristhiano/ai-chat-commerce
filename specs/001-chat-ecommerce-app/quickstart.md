@@ -182,7 +182,7 @@ JWT_SECRET=your-jwt-secret-key
 JWT_EXPIRES_IN=24h
 
 # External APIs
-OPENAI_API_KEY=your-openai-api-key
+OPENAI_API_KEY=secret
 STRIPE_SECRET_KEY=your-stripe-secret-key
 STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
 
@@ -203,7 +203,13 @@ VITE_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
 
 ### Backend Development
 ```bash
-# Start development server
+# Install Air for live reloading (recommended)
+go install github.com/air-verse/air@latest
+
+# Start development server with Air (automatic reload on code changes)
+air
+
+# OR start development server without live reloading
 go run cmd/api/main.go
 
 # Run tests
@@ -216,6 +222,8 @@ go tool cover -html=coverage.out
 # Build for production
 go build -o bin/api cmd/api/main.go
 ```
+
+**Note:** Air is configured for automatic live reloading. When you save Go files, the server will automatically rebuild and restart. Configuration is in `backend/.air.toml`.
 
 ### Frontend Development
 ```bash
