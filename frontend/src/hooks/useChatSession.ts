@@ -184,10 +184,9 @@ export const useChatSessions = () => {
       const result = await fetchService.post('/api/v1/chat/session', { user_id: userId });
       
       if (result.data && result.data.success) {
-          const sessionId = result.data.data.id;
-          setActiveSessionId(sessionId);
-          return sessionId;
-        }
+        const sessionId = result.data.data.id;
+        setActiveSessionId(sessionId);
+        return sessionId;
       } else if (result.error) {
         console.error('Failed to create session:', result.error);
       }

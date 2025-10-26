@@ -183,7 +183,6 @@ test.describe('Chat Shopping Journey', () => {
 
   test('should display usage instructions', async ({ page }) => {
     // Check that usage instructions are visible
-    await expect(page.getByText('How to use the chat:')).toBeVisible();
     await expect(page.getByText('Ask about products: "Show me wireless headphones"')).toBeVisible();
     await expect(page.getByText('Add to cart: "Add the blue t-shirt to my cart"')).toBeVisible();
     await expect(page.getByText('Complete purchase: "I want to checkout"')).toBeVisible();

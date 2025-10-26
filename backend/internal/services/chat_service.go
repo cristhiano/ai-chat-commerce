@@ -93,14 +93,20 @@ func (s *ChatService) ProcessMessage(sessionID string, userID *uuid.UUID, messag
 		cart = nil
 	}
 
-	// Get available products for context
-	products, err := s.productService.GetProducts(ProductFilters{
+	// Get available products for context with full details including category
+	productList, err := s.productService.GetProducts(ProductFilters{
 		Status: "active",
+		Page:   1,
 		Limit:  20,
 	})
 	if err != nil {
 		log.Printf("Warning: failed to get products: %v", err)
-		products = nil
+		productList = nil
+	}
+
+	var products *ProductListResponse
+	if productList != nil {
+		products = productList
 	}
 
 	// Build system prompt
@@ -148,10 +154,18 @@ func (s *ChatService) ProcessMessage(sessionID string, userID *uuid.UUID, messag
 
 	assistantMessage := response.Choices[0].Message.Content
 
-	// Parse the response for actions
-	actions, suggestions, err := s.parseResponse(assistantMessage, products)
-	if err != nil {
-		log.Printf("Warning: failed to parse response: %v", err)
+	// Parse the response for actions and generate suggestions based on USER's message
+	var actions []ChatAction
+	var suggestions []ProductSuggestion
+	if products != nil && products.Products != nil {
+		// Parse AI response for actions (add_to_cart, etc.)
+		actions, _, err = s.parseResponse(assistantMessage, products)
+		if err != nil {
+			log.Printf("Warning: failed to parse response: %v", err)
+		}
+
+		// Generate suggestions based on the USER's original message (not AI's response)
+		suggestions = s.generateRelevantSuggestions(message, products.Products)
 	}
 
 	// Execute actions
@@ -231,13 +245,17 @@ You can help users with:
 4. Providing product information
 5. Assisting with checkout process
 
+IMPORTANT: When users ask for product recommendations or search for products:
+- DO NOT list product names, prices, or detailed descriptions in your text response
+- Instead, give a brief, friendly response like "I found some great options for you!" or "Here are some recommendations based on your request"
+- The actual products will be shown as visual cards separately
+- Keep your text response short and conversational
+
 When users ask to add items to cart, respond with a JSON action like:
 {"type": "add_to_cart", "payload": {"product_id": "product-id", "quantity": 1}}
 
 When users ask to remove items, respond with:
 {"type": "remove_from_cart", "payload": {"product_id": "product-id"}}
-
-When showing products, include relevant details and suggest adding to cart if appropriate.
 
 Be friendly, helpful, and conversational. Always confirm actions taken and provide next steps.`
 
@@ -263,7 +281,7 @@ func (s *ChatService) parseResponse(message string, products *ProductListRespons
 	}
 
 	// Generate product suggestions based on message content
-	if products != nil {
+	if products != nil && products.Products != nil {
 		suggestions = s.generateRelevantSuggestions(message, products.Products)
 	}
 
@@ -275,15 +293,26 @@ func (s *ChatService) generateRelevantSuggestions(message string, products []mod
 	var suggestions []ProductSuggestion
 	messageLower := strings.ToLower(message)
 
-	// Define intent keywords to avoid suggesting products when user is not looking for them
-	negativeIntents := []string{
-		"no", "not", "don't", "don't want", "not interested", "not looking for",
-		"remove", "delete", "cancel", "stop", "quit", "exit", "bye", "goodbye",
-		"help", "how", "what", "when", "where", "why", "question", "ask",
-		"checkout", "buy", "purchase", "order", "cart", "shopping cart",
+	// Ensure products have all necessary fields loaded
+	for i := range products {
+		// Load category relationship if not already loaded (check by empty ID)
+		if products[i].Category.ID == uuid.Nil && products[i].CategoryID != uuid.Nil {
+			var category models.Category
+			if err := s.db.First(&category, products[i].CategoryID).Error; err == nil {
+				products[i].Category = category
+			}
+		}
 	}
 
-	// Check if user has negative intent (not looking for products)
+	// Define intent keywords to avoid suggesting products when user is clearly not looking for them
+	// Keep this list minimal - only truly negative scenarios
+	negativeIntents := []string{
+		"not interested", "don't want", "no thanks", "not looking",
+		"remove", "delete", "cancel",
+		"stop", "quit", "exit", "bye", "goodbye",
+	}
+
+	// Check if user has strong negative intent (explicitly not looking for products)
 	hasNegativeIntent := false
 	for _, intent := range negativeIntents {
 		if strings.Contains(messageLower, intent) {
@@ -299,9 +328,15 @@ func (s *ChatService) generateRelevantSuggestions(message string, products []mod
 
 	// Define positive intent keywords that indicate user wants product suggestions
 	positiveIntents := []string{
-		"show", "find", "search", "look for", "want", "need", "buy", "get",
-		"suggest", "recommend", "what", "which", "best", "good", "cheap",
-		"expensive", "electronics", "clothing", "books", "garden", "home",
+		"show", "find", "search", "look for", "looking for",
+		"want", "need", "interested", "like",
+		"buy", "get", "purchase", "checkout", "cart",
+		"suggest", "recommend", "recommendation", "advice",
+		"what", "which", "any", "do you have", "got",
+		"best", "good", "great", "popular", "top",
+		"cheap", "expensive", "affordable", "budget",
+		"electronics", "clothing", "books", "garden", "home",
+		"product", "products", "item", "items",
 	}
 
 	// Check if user has positive intent
@@ -322,8 +357,14 @@ func (s *ChatService) generateRelevantSuggestions(message string, products []mod
 	for _, product := range products {
 		confidence := s.calculateRelevanceScore(messageLower, product)
 
-		// Only suggest products with reasonable relevance
-		if confidence > 0.3 {
+		// Debug logging to see what's matching
+		if confidence > 0.2 {
+			log.Printf("[DEBUG] Product: %s, Category: %s, Confidence: %.2f",
+				product.Name, product.Category.Name, confidence)
+		}
+
+		// Only suggest products with reasonable relevance (balanced threshold)
+		if confidence >= 0.4 {
 			suggestions = append(suggestions, ProductSuggestion{
 				Product:    &product,
 				Reason:     s.generateReason(messageLower, product),
@@ -332,16 +373,59 @@ func (s *ChatService) generateRelevantSuggestions(message string, products []mod
 		}
 	}
 
-	// Sort by confidence and limit to top 3 suggestions
-	if len(suggestions) > 3 {
-		// Simple sort by confidence (descending)
-		for i := 0; i < len(suggestions)-1; i++ {
-			for j := i + 1; j < len(suggestions); j++ {
-				if suggestions[i].Confidence < suggestions[j].Confidence {
-					suggestions[i], suggestions[j] = suggestions[j], suggestions[i]
+	// Log final suggestions
+	log.Printf("[DEBUG] Message: '%s' - Generated %d suggestions", message, len(suggestions))
+
+	// Sort by confidence (descending)
+	for i := 0; i < len(suggestions)-1; i++ {
+		for j := i + 1; j < len(suggestions); j++ {
+			if suggestions[i].Confidence < suggestions[j].Confidence {
+				suggestions[i], suggestions[j] = suggestions[j], suggestions[i]
+			}
+		}
+	}
+
+	// If we have no suggestions but user clearly wants products, show top products
+	if len(suggestions) == 0 && hasPositiveIntent {
+		log.Printf("[DEBUG] No high-confidence matches, showing top products")
+		// Show up to 3 products with highest scores (even if below threshold)
+		type scoredProduct struct {
+			product    models.Product
+			confidence float64
+		}
+		var allScored []scoredProduct
+
+		for _, product := range products {
+			confidence := s.calculateRelevanceScore(messageLower, product)
+			if confidence > 0.1 { // Very low bar for fallback
+				allScored = append(allScored, scoredProduct{product, confidence})
+			}
+		}
+
+		// Sort by confidence
+		for i := 0; i < len(allScored)-1; i++ {
+			for j := i + 1; j < len(allScored); j++ {
+				if allScored[i].confidence < allScored[j].confidence {
+					allScored[i], allScored[j] = allScored[j], allScored[i]
 				}
 			}
 		}
+
+		// Take top 3 as fallback suggestions
+		limit := 3
+		if len(allScored) < limit {
+			limit = len(allScored)
+		}
+
+		for i := 0; i < limit; i++ {
+			suggestions = append(suggestions, ProductSuggestion{
+				Product:    &allScored[i].product,
+				Reason:     "Related to your search",
+				Confidence: allScored[i].confidence,
+			})
+		}
+	} else if len(suggestions) > 3 {
+		// Limit to top 3 suggestions
 		suggestions = suggestions[:3]
 	}
 
@@ -352,48 +436,181 @@ func (s *ChatService) generateRelevantSuggestions(message string, products []mod
 func (s *ChatService) calculateRelevanceScore(message string, product models.Product) float64 {
 	score := 0.0
 
+	// Stop words to ignore in keyword matching
+	stopWords := map[string]bool{
+		"a": true, "an": true, "the": true, "and": true, "or": true, "but": true,
+		"in": true, "on": true, "at": true, "to": true, "for": true, "of": true,
+		"with": true, "by": true, "from": true, "up": true, "about": true,
+		"me": true, "you": true, "i": true, "my": true, "your": true, "is": true,
+		"are": true, "was": true, "were": true, "be": true, "been": true, "being": true,
+		"have": true, "has": true, "had": true, "do": true, "does": true, "did": true,
+		"will": true, "would": true, "could": true, "should": true, "can": true, "may": true,
+	}
+
 	// Direct product name match (highest score)
 	productNameLower := strings.ToLower(product.Name)
 	if strings.Contains(message, productNameLower) {
 		score += 0.9
 	}
 
-	// Category match
-	categoryNameLower := strings.ToLower(product.Category.Name)
-	if strings.Contains(message, categoryNameLower) {
-		score += 0.7
+	// Category match - check if category is loaded
+	if product.Category.ID != uuid.Nil {
+		categoryNameLower := strings.ToLower(product.Category.Name)
+		if strings.Contains(message, categoryNameLower) {
+			score += 0.7
+		}
 	}
 
-	// Keyword matching in product description
+	// Keyword matching in product name and description (with stop word filtering)
 	descriptionLower := strings.ToLower(product.Description)
 	keywords := strings.Fields(message)
+	matchedKeywords := 0
+	totalMeaningfulKeywords := 0
+
 	for _, keyword := range keywords {
-		if len(keyword) > 2 && strings.Contains(descriptionLower, keyword) {
-			score += 0.1
+		keywordLower := strings.ToLower(keyword)
+		// Skip stop words and very short words
+		if stopWords[keywordLower] || len(keywordLower) < 3 {
+			continue
+		}
+
+		totalMeaningfulKeywords++
+
+		// Check for partial word matches (e.g., "book" matches "books")
+		keywordStem := keywordLower
+		if len(keywordLower) > 4 && strings.HasSuffix(keywordLower, "s") {
+			keywordStem = keywordLower[:len(keywordLower)-1]
+		}
+
+		// Higher score for product name match
+		if strings.Contains(productNameLower, keywordLower) || strings.Contains(productNameLower, keywordStem) {
+			score += 0.25
+			matchedKeywords++
+		} else if strings.Contains(descriptionLower, keywordLower) || strings.Contains(descriptionLower, keywordStem) {
+			score += 0.08
+			matchedKeywords++
 		}
 	}
 
-	// Price-related keywords
-	priceKeywords := map[string]float64{
-		"cheap": 0.3, "expensive": 0.3, "budget": 0.3, "affordable": 0.3,
-		"premium": 0.3, "luxury": 0.3, "deal": 0.3, "sale": 0.3,
-	}
-	for keyword, weight := range priceKeywords {
-		if strings.Contains(message, keyword) {
-			score += weight
-		}
+	// Bonus for matching multiple keywords (indicates better relevance)
+	if matchedKeywords >= 2 {
+		score += 0.15
 	}
 
-	// Specific product type keywords
+	// Strong bonus if most keywords matched
+	if totalMeaningfulKeywords > 0 && float64(matchedKeywords)/float64(totalMeaningfulKeywords) >= 0.5 {
+		score += 0.2
+	}
+
+	// Specific product type keywords - only add if they match product name or description
 	productTypeKeywords := map[string]float64{
-		"headphone": 0.6, "headphones": 0.6, "audio": 0.5, "music": 0.4,
-		"shirt": 0.6, "t-shirt": 0.6, "clothing": 0.5, "wear": 0.4,
-		"book": 0.6, "books": 0.6, "read": 0.5, "programming": 0.5,
-		"garden": 0.6, "tools": 0.6, "outdoor": 0.5, "plant": 0.4,
+		"headphone": 0.6, "headphones": 0.6, "audio": 0.5, "speaker": 0.6,
+		"shirt": 0.6, "t-shirt": 0.6, "clothing": 0.5, "apparel": 0.5,
+		"book": 0.7, "books": 0.7, "novel": 0.6, "guide": 0.6, "read": 0.5, "reading": 0.5,
+		"garden": 0.6, "tools": 0.6, "outdoor": 0.5, "plant": 0.5,
 	}
+
+	// Semantic/contextual keywords that map to product categories
+	// These help match user intent to product types
+	contextualKeywords := map[string]map[string]float64{
+		// Entertainment/boredom → books, electronics, headphones
+		"bored": {
+			"book": 0.4, "books": 0.4, "headphone": 0.4, "headphones": 0.4,
+			"wireless": 0.3, "audio": 0.3, "entertainment": 0.3,
+		},
+		"boredom": {
+			"book": 0.4, "books": 0.4, "headphone": 0.4, "headphones": 0.4,
+			"wireless": 0.3, "audio": 0.3, "entertainment": 0.3,
+		},
+		"entertainment": {
+			"book": 0.4, "books": 0.4, "headphone": 0.4, "headphones": 0.4,
+			"wireless": 0.3, "audio": 0.3,
+		},
+		"entertain": {
+			"book": 0.4, "books": 0.4, "headphone": 0.4, "headphones": 0.4,
+			"wireless": 0.3, "audio": 0.3,
+		},
+		// Commute/travel → books, headphones, portable electronics
+		"commute": {
+			"book": 0.4, "books": 0.4, "headphone": 0.4, "headphones": 0.4,
+			"wireless": 0.3, "portable": 0.3, "travel": 0.3,
+		},
+		"commuting": {
+			"book": 0.4, "books": 0.4, "headphone": 0.4, "headphones": 0.4,
+			"wireless": 0.3, "portable": 0.3, "travel": 0.3,
+		},
+		"travel": {
+			"book": 0.4, "books": 0.4, "headphone": 0.4, "headphones": 0.4,
+			"wireless": 0.3, "portable": 0.3,
+		},
+		"traveling": {
+			"book": 0.4, "books": 0.4, "headphone": 0.4, "headphones": 0.4,
+			"wireless": 0.3, "portable": 0.3,
+		},
+		// Music/audio → headphones, speakers
+		"music": {
+			"headphone": 0.5, "headphones": 0.5, "speaker": 0.4, "audio": 0.4, "wireless": 0.3,
+		},
+		"listen": {
+			"headphone": 0.5, "headphones": 0.5, "audio": 0.4, "book": 0.3, "books": 0.3,
+		},
+		"listening": {
+			"headphone": 0.5, "headphones": 0.5, "audio": 0.4, "book": 0.3, "books": 0.3,
+		},
+		// Reading → books
+		"read": {
+			"book": 0.6, "books": 0.6, "novel": 0.4, "guide": 0.3,
+		},
+		"reading": {
+			"book": 0.6, "books": 0.6, "novel": 0.4, "guide": 0.3,
+		},
+		// Fitness/exercise → clothing, outdoor
+		"exercise": {
+			"shirt": 0.4, "clothing": 0.4, "outdoor": 0.3,
+		},
+		"workout": {
+			"shirt": 0.4, "clothing": 0.4, "outdoor": 0.3,
+		},
+		"fitness": {
+			"shirt": 0.4, "clothing": 0.4, "outdoor": 0.3,
+		},
+		// Fashion/style → clothing
+		"wear": {
+			"shirt": 0.4, "clothing": 0.4, "apparel": 0.3,
+		},
+		"wearing": {
+			"shirt": 0.4, "clothing": 0.4, "apparel": 0.3,
+		},
+		"fashion": {
+			"shirt": 0.4, "clothing": 0.4, "apparel": 0.4,
+		},
+	}
+
 	for keyword, weight := range productTypeKeywords {
 		if strings.Contains(message, keyword) {
-			score += weight
+			// Only add score if the product actually relates to this keyword
+			if strings.Contains(productNameLower, keyword) ||
+				strings.Contains(descriptionLower, keyword) ||
+				strings.Contains(strings.ToLower(product.Category.Name), keyword) {
+				score += weight
+			}
+		}
+	}
+
+	// Apply contextual keyword matching
+	// This helps with semantic understanding (e.g., "bored while commuting" → books/headphones)
+	for contextKeyword, productKeywords := range contextualKeywords {
+		if strings.Contains(message, contextKeyword) {
+			// Check if this product matches any of the related product keywords
+			for productKeyword, weight := range productKeywords {
+				if strings.Contains(productNameLower, productKeyword) ||
+					strings.Contains(descriptionLower, productKeyword) ||
+					strings.Contains(strings.ToLower(product.Category.Name), productKeyword) {
+					score += weight
+					// Only apply the highest matching weight per context keyword
+					break
+				}
+			}
 		}
 	}
 
@@ -416,6 +633,37 @@ func (s *ChatService) generateReason(message string, product models.Product) str
 
 	if strings.Contains(message, categoryNameLower) {
 		return "Matches your category interest"
+	}
+
+	// Check for contextual matches
+	if strings.Contains(message, "bored") || strings.Contains(message, "boredom") {
+		if strings.Contains(productNameLower, "book") || strings.Contains(categoryNameLower, "book") {
+			return "Great for entertainment"
+		}
+		if strings.Contains(productNameLower, "headphone") || strings.Contains(productNameLower, "audio") {
+			return "Great for entertainment"
+		}
+	}
+
+	if strings.Contains(message, "commut") || strings.Contains(message, "travel") {
+		if strings.Contains(productNameLower, "book") || strings.Contains(categoryNameLower, "book") {
+			return "Perfect for travel"
+		}
+		if strings.Contains(productNameLower, "headphone") || strings.Contains(productNameLower, "wireless") {
+			return "Perfect for commuting"
+		}
+	}
+
+	if strings.Contains(message, "music") || strings.Contains(message, "listen") {
+		if strings.Contains(productNameLower, "headphone") || strings.Contains(productNameLower, "audio") {
+			return "Great for listening"
+		}
+	}
+
+	if strings.Contains(message, "read") {
+		if strings.Contains(productNameLower, "book") || strings.Contains(categoryNameLower, "book") {
+			return "Great for reading"
+		}
 	}
 
 	// Check for specific keywords

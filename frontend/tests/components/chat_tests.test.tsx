@@ -301,4 +301,203 @@ describe('ProductSuggestionCard', () => {
 
     expect(container.firstChild).toBeNull();
   });
+
+  // T074: Test ProductSuggestionCard renders with structured product data
+  describe('Structured Product Data Rendering', () => {
+    it('renders complete product data with category, tags, and inventory', () => {
+      const fullProduct: any = {
+        id: 'prod-123',
+        name: 'Wireless Headphones',
+        description: 'High-quality wireless headphones with noise cancellation',
+        price: 199.99,
+        sku: 'WH-001',
+        status: 'active',
+        category_id: 'cat-electronics',
+        category: {
+          id: 'cat-electronics',
+          name: 'Electronics',
+          description: 'Electronic products',
+          slug: 'electronics',
+          sort_order: 1,
+          is_active: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        tags: ['new', 'popular', 'bestseller'],
+        inventory: [
+          {
+            id: 'inv-001',
+            product_id: 'prod-123',
+            warehouse_location: 'Warehouse A',
+            quantity_available: 100,
+            quantity_reserved: 10,
+            low_stock_threshold: 20,
+            reorder_point: 30,
+          },
+        ],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      };
+
+      const fullSuggestion: ProductSuggestion = {
+        product: fullProduct,
+        reason: 'Best match for your search',
+        confidence: 0.95,
+      };
+
+      render(<ProductSuggestionCard suggestion={fullSuggestion} showAddToCart={true} />);
+
+      // Verify product name and description
+      expect(screen.getByText('Wireless Headphones')).toBeInTheDocument();
+      expect(screen.getByText(/High-quality wireless headphones/)).toBeInTheDocument();
+
+      // Verify price
+      expect(screen.getByText('$199.99')).toBeInTheDocument();
+
+      // Verify category is displayed
+      expect(screen.getByText('Electronics')).toBeInTheDocument();
+
+      // Verify tags are displayed (first 2)
+      expect(screen.getByText('new')).toBeInTheDocument();
+      expect(screen.getByText('popular')).toBeInTheDocument();
+    });
+
+    it('renders product with missing optional fields gracefully', () => {
+      const minimalProduct: any = {
+        id: 'prod-456',
+        name: 'Basic Product',
+        description: 'A basic product with minimal data',
+        price: 49.99,
+        sku: 'BP-001',
+        status: 'active',
+        category_id: 'cat-misc',
+        // No category relationship
+        // No tags
+        // No inventory
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      };
+
+      const minimalSuggestion: ProductSuggestion = {
+        product: minimalProduct,
+      };
+
+      const { container } = render(
+        <ProductSuggestionCard suggestion={minimalSuggestion} showAddToCart={true} />
+      );
+
+      // Verify product still renders
+      expect(screen.getByText('Basic Product')).toBeInTheDocument();
+      expect(screen.getByText(/A basic product with minimal data/)).toBeInTheDocument();
+      expect(screen.getByText('$49.99')).toBeInTheDocument();
+
+      // Category, tags should not cause errors
+      expect(container).toBeInTheDocument();
+    });
+
+    it('handles product with empty tags array', () => {
+      const productWithEmptyTags: any = {
+        id: 'prod-789',
+        name: 'Product Without Tags',
+        description: 'A product with no tags',
+        price: 29.99,
+        sku: 'NT-001',
+        status: 'active',
+        category_id: 'cat-misc',
+        category: {
+          id: 'cat-misc',
+          name: 'Miscellaneous',
+          slug: 'misc',
+        },
+        tags: [], // Empty tags array
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      };
+
+      const suggestion: ProductSuggestion = {
+        product: productWithEmptyTags,
+        reason: 'Available product',
+        confidence: 0.75,
+      };
+
+      const { container } = render(
+        <ProductSuggestionCard suggestion={suggestion} showAddToCart={true} />
+      );
+
+      // Verify product renders correctly without tags section
+      expect(screen.getByText('Product Without Tags')).toBeInTheDocument();
+      expect(screen.getByText('Miscellaneous')).toBeInTheDocument();
+      expect(container).toBeInTheDocument();
+    });
+
+    it('displays out of stock status when inventory is zero', () => {
+      const outOfStockProduct: any = {
+        id: 'prod-999',
+        name: 'Out of Stock Product',
+        description: 'This product is out of stock',
+        price: 79.99,
+        sku: 'OOS-001',
+        status: 'active',
+        category_id: 'cat-electronics',
+        category: {
+          id: 'cat-electronics',
+          name: 'Electronics',
+          slug: 'electronics',
+        },
+        inventory: [
+          {
+            id: 'inv-999',
+            product_id: 'prod-999',
+            warehouse_location: 'Warehouse A',
+            quantity_available: 0,
+            quantity_reserved: 0,
+            low_stock_threshold: 10,
+            reorder_point: 20,
+          },
+        ],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      };
+
+      const suggestion: ProductSuggestion = {
+        product: outOfStockProduct,
+        reason: 'Popular item',
+        confidence: 0.88,
+      };
+
+      render(<ProductSuggestionCard suggestion={suggestion} showAddToCart={true} />);
+
+      // Verify out of stock message
+      expect(screen.getByText('Out of Stock Product')).toBeInTheDocument();
+      expect(screen.getByText('Out of stock')).toBeInTheDocument();
+    });
+
+    it('shows Add to Cart button when showAddToCart is true', () => {
+      const suggestion: ProductSuggestion = {
+        product: mockProduct,
+        reason: 'Recommended',
+        confidence: 0.9,
+      };
+
+      render(<ProductSuggestionCard suggestion={suggestion} showAddToCart={true} />);
+
+      // Verify Add to Cart button is present (button element should exist)
+      const buttons = screen.getAllByRole('button');
+      expect(buttons.length).toBeGreaterThan(0);
+    });
+
+    it('does not show Add to Cart button when showAddToCart is false', () => {
+      const suggestion: ProductSuggestion = {
+        product: mockProduct,
+        reason: 'Recommended',
+        confidence: 0.9,
+      };
+
+      render(<ProductSuggestionCard suggestion={suggestion} showAddToCart={false} />);
+
+      // Verify Add to Cart button is not present
+      const buttons = screen.queryAllByRole('button');
+      expect(buttons.length).toBe(0);
+    });
+  });
 });

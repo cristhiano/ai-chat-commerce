@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { ChatMessage, ProductSuggestion, ChatAction } from '../../types';
 import ChatInput from './ChatInput';
 import ChatMessageComponent from './ChatMessage';
-import ProductSuggestionCard from './ProductSuggestionCard';
 import fetchService from '../../utils/fetch';
 
 interface ChatInterfaceProps {
@@ -17,13 +16,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onCartUpdate 
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const connectionAttempted = useRef<boolean>(false);
   const reconnecting = useRef<boolean>(false);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Generate session ID if not provided - use useMemo to prevent regeneration
   const currentSessionId = React.useMemo(() => {
@@ -48,7 +47,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     };
   }, [currentSessionId]);
 
-  // Auto-scroll disabled - removed useEffect that was calling scrollToBottom() on messages change
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  };
 
   const connectWebSocket = () => {
     // Close existing connection if any
@@ -131,7 +139,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         break;
 
       case 'suggestions':
-        setSuggestions(data.data);
+        // Suggestions are now handled in message metadata, no need to store separately
+        console.log('Received suggestions:', data.data);
         break;
 
       case 'actions':
@@ -182,6 +191,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       return;
     }
 
+    // Immediately add user message to UI for instant feedback
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      sessionId: currentSessionId,
+      userId: userId,
+      role: 'user',
+      content,
+      timestamp: new Date().toISOString(),
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+
+    // Send to server
     const message = {
       type: 'message',
       data: {
@@ -233,7 +255,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             <div className="mb-4">
@@ -266,22 +288,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         )}
       </div>
-
-      {/* Product Suggestions */}
-      {suggestions.length > 0 && (
-        <div className="border-t border-gray-200 p-4 bg-gray-50">
-          <h4 className="text-sm font-medium text-gray-900 mb-3">Product Suggestions</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {suggestions.map((suggestion, index) => (
-              <ProductSuggestionCard
-                key={index}
-                suggestion={suggestion}
-                onClick={() => handleSuggestionClick(suggestion)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Input */}
       <div className="border-t border-gray-200 p-4">

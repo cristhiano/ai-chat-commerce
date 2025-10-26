@@ -9,7 +9,7 @@ export interface Product {
   sku: string;
   status: string;
   metadata?: Record<string, any>;
-  tags: string[];
+  tags?: string[];
   created_at: string;
   updated_at: string;
   category?: Category;
@@ -295,8 +295,13 @@ export interface ChatAction {
 
 export interface ProductSuggestion {
   product: Product;
-  reason: string;
-  confidence: number;
+  reason?: string;
+  confidence?: number;
+  metadata?: {
+    search_query?: string;
+    filters_applied?: string[];
+    sort_method?: string;
+  };
 }
 
 export interface ChatResponse {

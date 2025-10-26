@@ -43,13 +43,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
         {suggestions.length > 0 && (
           <div className="mt-4">
             <h4 className="text-sm font-medium text-gray-700 mb-2">Suggested Products:</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {suggestions.map((suggestion, index) => (
                 <ProductSuggestionCard
                   key={index}
                   suggestion={suggestion}
                   onClick={() => onSuggestionClick?.(suggestion)}
-                  compact
+                  showAddToCart={true}
                 />
               ))}
             </div>
@@ -98,7 +98,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
         <div className={`
           flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
           ${isUser 
-            ? 'bg-blue-600 text-white' 
+            ? 'bg-blue-400 text-white' 
             : 'bg-gray-200 text-gray-600'
           }
         `}>
@@ -117,7 +117,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
         <div className={`
           px-4 py-3 rounded-lg shadow-sm
           ${isUser 
-            ? 'bg-blue-600 text-white' 
+            ? 'bg-blue-400 text-white' 
             : 'bg-white text-gray-900 border border-gray-200'
           }
         `}>
@@ -126,7 +126,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           {/* Timestamp */}
           <div className={`
             mt-2 text-xs
-            ${isUser ? 'text-blue-100' : 'text-gray-500'}
+            ${isUser ? 'text-blue-50' : 'text-gray-500'}
           `}>
             {formatTimestamp(message.timestamp)}
           </div>

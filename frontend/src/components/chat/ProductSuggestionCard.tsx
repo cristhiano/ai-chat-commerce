@@ -1,114 +1,115 @@
 import React from 'react';
+import { useCart } from '../../contexts/CartContext';
+import CartActionButton from '../cart/CartActionButton';
 import type { ProductSuggestion } from '../../types';
 
 interface ProductSuggestionCardProps {
   suggestion: ProductSuggestion;
   onClick?: () => void;
   compact?: boolean;
+  showAddToCart?: boolean;
 }
 
 const ProductSuggestionCard: React.FC<ProductSuggestionCardProps> = ({ 
   suggestion, 
   onClick, 
-  compact = false 
+  compact = false,
+  showAddToCart = false
 }) => {
   const { product, reason, confidence } = suggestion;
+  const { cart, addToCart, updateCartItem } = useCart();
 
   if (!product) {
     return null;
   }
 
-  const handleClick = () => {
-    if (onClick) {
+  const handleClick = (e: React.MouseEvent) => {
+    // Don't trigger onClick if clicking on add to cart button
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    if (onClick && !showAddToCart) {
       onClick();
     }
   };
 
+  // Format price with currency symbol
+  const formatPrice = (price: number): string => {
+    return `$${price.toFixed(2)}`;
+  };
+
+  // Check if product is out of stock
+  const isOutOfStock = product.inventory && product.inventory.some(inv => inv.quantity_available === 0);
+
   const cardClasses = `
-    bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md
-    transition-shadow duration-200 cursor-pointer
-    ${compact ? 'p-3' : 'p-4'}
-    ${onClick ? 'hover:border-blue-300' : ''}
+    bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow
+    border border-gray-200
+    ${onClick && !showAddToCart ? 'cursor-pointer' : ''}
+    ${isOutOfStock ? 'opacity-75' : ''}
   `;
 
   return (
     <div className={cardClasses} onClick={handleClick}>
-      <div className="flex space-x-3">
-        {/* Product Image Placeholder */}
-        <div className="flex-shrink-0">
-          <div className={`
-            bg-gray-200 rounded-lg flex items-center justify-center
-            ${compact ? 'w-12 h-12' : 'w-16 h-16'}
-          `}>
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        </div>
+      {/* Product Image Placeholder */}
+      <div className="h-48 bg-gray-200 rounded-t-lg flex items-center justify-center border-b border-gray-300">
+        <span className="text-4xl text-gray-400">🛍️</span>
+      </div>
 
-        {/* Product Info */}
-        <div className="flex-1 min-w-0">
-          <h3 className={`
-            font-medium text-gray-900 truncate
-            ${compact ? 'text-sm' : 'text-base'}
-          `}>
-            {product.name}
-          </h3>
-          
-          <p className={`
-            text-gray-600 mt-1
-            ${compact ? 'text-xs line-clamp-2' : 'text-sm line-clamp-3'}
-          `}>
-            {product.description}
-          </p>
+      {/* Product Info */}
+      <div className="p-4">
+        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+          {product.name}
+        </h3>
+        
+        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+          {product.description}
+        </p>
 
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center space-x-2">
-              <span className={`
-                font-semibold text-blue-600
-                ${compact ? 'text-sm' : 'text-base'}
-              `}>
-                ${product.price.toFixed(2)}
-              </span>
-              
-              {confidence && (
-                <span className={`
-                  px-2 py-1 rounded-full text-xs font-medium
-                  ${confidence > 0.8 
-                    ? 'bg-green-100 text-green-800' 
-                    : confidence > 0.6 
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-gray-100 text-gray-800'
-                  }
-                `}>
-                  {Math.round(confidence * 100)}% match
-                </span>
-              )}
-            </div>
-
-            {reason && (
-              <span className="text-xs text-gray-500 truncate max-w-20">
-                {reason}
-              </span>
-            )}
-          </div>
-
-          {/* Category */}
+        {/* Price and Category */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-lg font-bold text-blue-600">
+            {formatPrice(product.price)}
+          </span>
           {product.category && (
-            <div className="mt-1">
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                {product.category.name}
-              </span>
-            </div>
+            <span className="text-xs text-gray-500">
+              {product.category.name}
+            </span>
           )}
         </div>
 
-        {/* Click indicator */}
-        {onClick && (
-          <div className="flex-shrink-0 flex items-center">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+        {/* Tags */}
+        {product.tags && product.tags.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1">
+            {product.tags.slice(0, 2).map((tag) => (
+              <span key={tag} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Add to Cart Button */}
+        {showAddToCart && (
+          <div className="mt-3">
+            <CartActionButton
+              productId={product.id}
+              currentCart={cart}
+              onAddToCart={addToCart}
+              onUpdateQuantity={async (item) => {
+                return await updateCartItem({
+                  product_id: item.product_id,
+                  variant_id: item.variant_id,
+                  quantity: item.quantity,
+                });
+              }}
+              className={isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}
+            />
+            {/* Show out of stock message */}
+            {isOutOfStock && (
+              <p className="mt-2 text-xs text-red-600 text-center">
+                Out of stock
+              </p>
+            )}
           </div>
         )}
       </div>
