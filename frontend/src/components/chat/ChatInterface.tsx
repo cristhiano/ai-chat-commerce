@@ -21,7 +21,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const connectionAttempted = useRef<boolean>(false);
   const reconnecting = useRef<boolean>(false);
@@ -49,9 +48,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     };
   }, [currentSessionId]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // Auto-scroll disabled - removed useEffect that was calling scrollToBottom() on messages change
 
   const connectWebSocket = () => {
     // Close existing connection if any
@@ -197,10 +194,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     wsRef.current.send(JSON.stringify(message));
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   const handleSuggestionClick = (suggestion: ProductSuggestion) => {
     if (suggestion.product) {
       sendMessage(`Tell me more about ${suggestion.product.name}`);
@@ -272,8 +265,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <span className="text-sm">Assistant is typing...</span>
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Product Suggestions */}
