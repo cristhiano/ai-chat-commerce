@@ -117,10 +117,10 @@ Enable users to search products using keywords with basic matching and paginatio
 - [x] T032 [US1] Implement loading states and error handling in frontend/src/components/search/SearchStates.tsx
 
 #### Testing
-- [ ] T033 [US1] Create search service unit tests in backend/internal/services/search/service_test.go
-- [ ] T034 [US1] Create search handler tests in backend/internal/handlers/search/handler_test.go
-- [ ] T035 [US1] Create search component tests in frontend/src/components/search/__tests__/
-- [ ] T036 [US1] Create search integration tests in backend/tests/integration/search_test.go
+- [x] T033 [US1] Create search service unit tests in backend/internal/services/search/service_test.go
+- [x] T034 [US1] Create search handler tests in backend/internal/handlers/search/handler_test.go
+- [x] T035 [US1] Create search component tests in frontend/src/components/search/__tests__/
+- [x] T036 [US1] Create search integration tests in backend/tests/integration/search_test.go
 
 ---
 
