@@ -9,6 +9,7 @@ interface CartState {
 }
 
 interface CartContextType extends CartState {
+  isLoading: boolean; // Alias for loading
   addToCart: (item: AddToCartRequest) => Promise<boolean>;
   updateCartItem: (item: UpdateCartItemRequest) => Promise<boolean>;
   removeFromCart: (productId: string, variantId?: string) => Promise<boolean>;
@@ -196,6 +197,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   const value: CartContextType = {
     ...state,
+    isLoading: state.loading, // Alias for loading
     addToCart,
     updateCartItem,
     removeFromCart,

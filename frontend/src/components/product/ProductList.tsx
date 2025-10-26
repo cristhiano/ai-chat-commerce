@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
+import { useCart } from '../../contexts/CartContext';
 import type { Product, ProductFilters } from '../../types';
 import { formatCurrency } from '../../utils';
 
@@ -211,6 +212,29 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const { addToCart } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsAdding(true);
+    try {
+      await addToCart({
+        product_id: product.id,
+        variant_id: undefined,
+        quantity: 1,
+      });
+      alert('Product added to cart!');
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      alert('Failed to add product to cart');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
       <Link to={`/products/${product.id}`} className="block">
@@ -233,7 +257,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             {product.description}
           </p>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <span className="text-2xl font-bold text-blue-600">
               {formatCurrency(product.price)}
             </span>
@@ -244,7 +268,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
 
           {/* Status Badge */}
-          <div className="mt-3">
+          <div className="mb-3">
             <span className={`inline-block px-2 py-1 text-xs rounded-full ${
               product.status === 'active' 
                 ? 'bg-green-100 text-green-800' 
@@ -253,6 +277,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               {product.status}
             </span>
           </div>
+
+          {/* Add to Cart Button */}
+          {product.status === 'active' && (
+            <button
+              onClick={handleAddToCart}
+              disabled={isAdding}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAdding ? 'Adding...' : 'Add to Cart'}
+            </button>
+          )}
         </div>
       </Link>
     </div>
