@@ -133,24 +133,54 @@ type InventoryReservation struct {
 
 // User represents customer accounts
 type User struct {
-	ID            uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	Email         string         `gorm:"size:255;uniqueIndex;not null" json:"email"`
-	PasswordHash  string         `gorm:"size:255;not null" json:"-"`
-	FirstName     string         `gorm:"size:50;not null" json:"first_name"`
-	LastName      string         `gorm:"size:50;not null" json:"last_name"`
-	Phone         string         `gorm:"size:20" json:"phone"`
-	DateOfBirth   *time.Time     `json:"date_of_birth"`
-	Preferences   datatypes.JSON `gorm:"type:jsonb" json:"preferences"`
-	EmailVerified bool           `gorm:"default:false" json:"email_verified"`
-	Status        string         `gorm:"size:20;default:'active';index" json:"status"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID                  uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	Email               string         `gorm:"size:255;uniqueIndex;not null" json:"email"`
+	PasswordHash        string         `gorm:"size:255;not null" json:"-"`
+	FirstName           string         `gorm:"size:50;not null" json:"first_name"`
+	LastName            string         `gorm:"size:50;not null" json:"last_name"`
+	Phone               string         `gorm:"size:20" json:"phone"`
+	DateOfBirth         *time.Time     `json:"date_of_birth"`
+	Preferences         datatypes.JSON `gorm:"type:jsonb" json:"preferences"`
+	EmailVerified       bool           `gorm:"default:false" json:"email_verified"`
+	Status              string         `gorm:"size:20;default:'active';index" json:"status"`
+	AccountState        string         `gorm:"size:20;default:'active';index" json:"account_state"`
+	FailedLoginAttempts int            `gorm:"default:0;not null" json:"failed_login_attempts"`
+	LockoutUntil        *time.Time     `gorm:"index" json:"lockout_until"`
+	LastLoginAt         *time.Time     `json:"last_login_at"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
 
 	// Relationships
 	ChatSessions  []ChatSession          `gorm:"foreignKey:UserID" json:"chat_sessions"`
 	ShoppingCarts []ShoppingCart         `gorm:"foreignKey:UserID" json:"shopping_carts"`
 	Orders        []Order                `gorm:"foreignKey:UserID" json:"orders"`
 	Reservations  []InventoryReservation `gorm:"foreignKey:UserID" json:"reservations"`
+}
+
+// IsLocked checks if the user account is currently locked
+func (u *User) IsLocked() bool {
+	if u.LockoutUntil == nil {
+		return false
+	}
+	return u.AccountState == "locked" && time.Now().Before(*u.LockoutUntil)
+}
+
+// IsActive checks if the user account is active
+func (u *User) IsActive() bool {
+	return u.AccountState == "active" && !u.IsLocked()
+}
+
+// GetLockoutRemainingMinutes returns the remaining lockout time in minutes
+func (u *User) GetLockoutRemainingMinutes() int {
+	if u.LockoutUntil == nil || !u.IsLocked() {
+		return 0
+	}
+
+	remaining := time.Until(*u.LockoutUntil)
+	if remaining <= 0 {
+		return 0
+	}
+	return int(remaining.Minutes()) + 1 // Round up
 }
 
 // ChatSession represents chat conversation sessions

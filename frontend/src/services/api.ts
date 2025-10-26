@@ -195,34 +195,48 @@ class ApiService {
 
   // Auth API methods
   async login(credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> {
-    const response = await this.request<AuthResponse>('/api/v1/auth/login', {
+    const response = await this.request<{ success: boolean; token: string; user: { id: string; email: string }; expires_at: string }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
 
     if (response.data) {
-      localStorage.setItem('access_token', response.data.access_token);
-      localStorage.setItem('refresh_token', response.data.refresh_token);
+      // Convert response to AuthResponse format
+      const authResponse: AuthResponse = {
+        user: { id: response.data.user.id, email: response.data.user.email } as User,
+        access_token: response.data.token,
+        refresh_token: '', // Not using refresh tokens in MVP
+        expires_in: 86400, // 24 hours
+      };
+      
+      localStorage.setItem('access_token', response.data.token);
+      
+      return { data: authResponse };
     }
 
-    return response;
+    return response as any;
   }
 
   async register(userData: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
-    const response = await this.request<AuthResponse>('/api/v1/auth/register', {
+    const response = await this.request<{ success: boolean; user_id: string; message: string }>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify(userData),
+      body: JSON.stringify({ email: userData.email, password: userData.password }),
     });
 
     if (response.data) {
-      localStorage.setItem('access_token', response.data.access_token);
-      localStorage.setItem('refresh_token', response.data.refresh_token);
+      // Auto-login after registration
+      return this.login({ email: userData.email, password: userData.password });
     }
 
-    return response;
+    return response as any;
   }
 
   async logout(): Promise<void> {
+    // Call logout endpoint to invalidate session
+    await this.request('/api/auth/logout', {
+      method: 'POST',
+    });
+    
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
   }

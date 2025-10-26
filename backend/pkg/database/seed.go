@@ -2,6 +2,7 @@ package database
 
 import (
 	"chat-ecommerce-backend/internal/models"
+	authmodels "chat-ecommerce-backend/internal/models/auth"
 	"log"
 	"time"
 
@@ -28,6 +29,15 @@ func MigrateDatabase(db *gorm.DB) error {
 		&models.OrderItem{},
 	)
 
+	if err != nil {
+		return err
+	}
+
+	// Run auth-specific migrations (Session and PasswordResetToken only, User already migrated above)
+	err = db.AutoMigrate(
+		&authmodels.Session{},
+		&authmodels.PasswordResetToken{},
+	)
 	if err != nil {
 		return err
 	}

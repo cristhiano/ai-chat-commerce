@@ -320,6 +320,9 @@ func main() {
 	// Register search routes
 	routes.SetupSearchRoutes(r, searchService)
 
+	// Register auth routes
+	routes.SetupAuthRoutes(r, db, os.Getenv("JWT_SECRET"))
+
 	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {

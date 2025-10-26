@@ -55,6 +55,23 @@ services:
     networks:
       - chat-ecommerce-network
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: chat-ecommerce-frontend-dev
+    volumes:
+      # Mount source code for live reloading
+      - ./frontend:/app
+      # Exclude node_modules to use container's modules
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - chat-ecommerce-network
+
 volumes:
   go-mod-cache:
   postgres_data:
